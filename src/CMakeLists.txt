@@ -10,14 +10,19 @@ aux_source_directory(. DIR_SRCS)
 
 include_directories(./database)
 include_directories(./utils)
+include_directories(./libs)
 
 add_subdirectory(database)
 add_subdirectory(utils)
+add_subdirectory(libs)
 
 add_executable(sEngine ${DIR_SRCS})
 
 target_link_libraries(sEngine mysqlcppconn8)
 target_link_libraries(sEngine database)
 target_link_libraries(sEngine configParser)
+
+# 引用的开源库
+target_link_libraries(sEngine EasyLogger)
 
 install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/")
