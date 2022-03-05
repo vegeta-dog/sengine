@@ -1,6 +1,8 @@
 #include <iostream>
+#include<database/DataBase.h>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+
+    Database::example();
     return 0;
 }
