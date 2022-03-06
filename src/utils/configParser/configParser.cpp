@@ -8,9 +8,9 @@
 #include<stdexcept>
 #include<iostream>
 #include<boost/property_tree/ptree.hpp>
-
-
 #include<boost/property_tree/ini_parser.hpp>
+
+
 
 boost::property_tree::ptree config;
 #define GET_SECTION(str)                    \
@@ -26,8 +26,8 @@ boost::property_tree::ptree config;
  * @return
  */
 int configParser::parse(const std::string &path) {
-    try {
 
+    try {
         boost::property_tree::ini_parser::read_ini(path, config);
     }
     catch (const std::runtime_error &e) {

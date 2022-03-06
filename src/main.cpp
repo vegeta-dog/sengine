@@ -1,15 +1,16 @@
 #include <iostream>
 #include<database/DataBase.h>
 #include<utils/configParser/configParser.h>
+#include<utils/logger/logger.h>
+
 #include<map>
 
 int main() {
 
     Database::example();
-
+    logging::logger logger("main");
+    logger.info(__LINE__, "12123123");
     configParser::parse("config.ini");
-    std::string data;
-    configParser::get_config("string.a", &data);
-    std::cout<<data<<std::endl;
+
     return 0;
 }

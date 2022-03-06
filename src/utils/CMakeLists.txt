@@ -5,6 +5,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. DIR_SRCS)
 
 include_directories(./configParser)
+include_directories(./logger)
 
 add_subdirectory(configParser)
+add_subdirectory(logger)
 

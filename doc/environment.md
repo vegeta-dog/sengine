@@ -10,7 +10,9 @@ Clion
 
 - Mysql Connector/C++ == 8.0.28
 
-- libboost-all-dev == 1.67.0
+- boost == 1.78.0
+
+- log4cplus == 2.0.7
 
 - libmysqlclient-dev (需先安装mysql apt config)
 
