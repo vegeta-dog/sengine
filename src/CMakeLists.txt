@@ -23,6 +23,6 @@ target_link_libraries(sEngine database)
 target_link_libraries(sEngine configParser)
 
 # 引用的开源库
-target_link_libraries(sEngine EasyLogger)
+
 
 install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/")
