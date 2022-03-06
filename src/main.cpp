@@ -4,13 +4,15 @@
 #include<utils/logger/logger.h>
 
 #include<map>
-
+logging::logger log_main("main");
 int main() {
 
     Database::example();
-    logging::logger logger("main");
-    logger.info(__LINE__, "12123123");
+
+    log_main.info(__LINE__, "sEngine starting...");
+
     configParser::parse("config.ini");
+    Database::DataBase db;
 
     return 0;
 }

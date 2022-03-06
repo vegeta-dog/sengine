@@ -17,7 +17,7 @@ namespace logging{
          * 实例化logger
          * @param module 当前实例的模块名
          */
-        explicit logger(const std::string &module);
+        logger(const std::string &module);
         ~logger()= default;
 
         void debug(const int &line, const std::string& msg);
@@ -32,11 +32,6 @@ namespace logging{
         int pid, tid;
     };
 }
-/**
- * 初始化日志环境
- * @param _cfg 日志配置文件的路径
- * @return
- */
-bool init_log_environment();
+
 
 #endif //SENGINE_LOGGER_H

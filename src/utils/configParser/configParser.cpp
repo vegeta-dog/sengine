@@ -11,6 +11,7 @@
 #include<boost/property_tree/ini_parser.hpp>
 
 
+logging::logger log_configParser("configParser");
 
 boost::property_tree::ptree config;
 #define GET_SECTION(str)                    \
@@ -31,8 +32,7 @@ int configParser::parse(const std::string &path) {
         boost::property_tree::ini_parser::read_ini(path, config);
     }
     catch (const std::runtime_error &e) {
-        printf("%s", e.what());
-
+        log_configParser.error(__LINE__, e.what());
     }
     return SUCCESS;
 };

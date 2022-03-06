@@ -64,6 +64,8 @@ target_link_libraries(sEngine logger)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
 else ()
     install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
 endif ()

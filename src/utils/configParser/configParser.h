@@ -19,6 +19,7 @@
 #define E_SYNTAX_ERROR
 
 
+#include<logger/logger.h>
 
 namespace configParser {
 
