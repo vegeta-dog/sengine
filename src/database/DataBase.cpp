@@ -30,11 +30,11 @@ Database::DataBase::DataBase() {
     configParser::get_config("DataBase.mysql_host", &str_data);
     this->mysql_host = str_data;
 
-    std::cout<<"123"<<std::endl;
+
     configParser::get_config("DataBase.mysql_port", &str_data);
     char* ptr;
     this->mysql_port = atoi(str_data.c_str());
-    std::cout<<this->mysql_port<<std::endl ;
+
     configParser::get_config("DataBase.mysql_username", &str_data);
     this->mysql_username = str_data;
 
@@ -45,16 +45,9 @@ Database::DataBase::DataBase() {
     this->mysql_database_name = str_data;
 
 
+    conn = mysql_real_connect(conn, this->mysql_host.c_str(), this->mysql_username.c_str(), this->mysql_password.c_str(), this->mysql_database_name.c_str(),
+                              this->mysql_port, NULL, 0);
 
-    driver = sql::mysql::get_mysql_driver_instance();
-    if(driver == NULL)
-    {
-        log_DataBase.error(__LINE__, "driver is NULL.");
-        exit(0);
-    }
-
-    conn = driver->connect("tcp://"+ this->mysql_host+":"+ boost::lexical_cast<std::string>(this->mysql_port)+"/" + this->mysql_database_name,
-                           this->mysql_username, this->mysql_password);
 
     if(conn == NULL)
     {
@@ -62,7 +55,10 @@ Database::DataBase::DataBase() {
         exit(0);
     }
 
-    log_DataBase.info(__LINE__, "Successfully connected to MySQL server!");
+    log_DataBase.info(__LINE__, "Successfully connected to MySQL server via mysql api!");
+
+
+
 
 
 

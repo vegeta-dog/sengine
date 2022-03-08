@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/sEngine.iml" filepath="$PROJECT_DIR$/.idea/sEngine.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/untitled.iml" filepath="$PROJECT_DIR$/.idea/untitled.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/sengine.iml" filepath="$PROJECT_DIR$/.idea/sengine.iml" />
     </modules>
   </component>
 </project>

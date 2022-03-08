@@ -6,9 +6,7 @@
 #define SENGINE_DATABASE_H
 
 
-#include<mysql-cppconn-8/jdbc/mysql_connection.h>
-#include<mysql-cppconn-8/jdbc/mysql_driver.h>
-#include<mysql-cppconn-8/jdbc/cppconn/statement.h>
+#include<mysql/mysql.h>
 
 #include "logger/logger.h"
 
@@ -32,8 +30,8 @@ namespace Database {
         std::string redis_username;
         std::string redis_password;
 
-        sql::mysql::MySQL_Driver *driver = nullptr;
-        sql::Connection *conn = nullptr;
+
+        MYSQL *conn = mysql_init(NULL);
 
 
     };

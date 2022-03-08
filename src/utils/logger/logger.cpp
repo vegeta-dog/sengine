@@ -4,6 +4,7 @@
 
 #include "logger.h"
 #include "cstdlib"
+#include "unistd.h"
 
 
 logging::logger::logger(const std::string &module) {

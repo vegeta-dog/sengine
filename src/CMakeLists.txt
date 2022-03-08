@@ -14,12 +14,13 @@ set(publish_bin_release ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release)
 set(publish_lib_debug ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug)
 set(publish_lib_release ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release)
 
-add_link_options(-lrt -pthread )
-add_compile_options(-std=c++17 -lstdc++)
+add_link_options(-lrt -lpthread  -lstdc++ )
+add_compile_options(-std=c++17)
 
 # 将当前目录下的代码添加到DIR_SRCS变量
 aux_source_directory(. DIR_SRCS)
 
+include_directories(/usr/include)
 include_directories(./database)
 include_directories(./utils)
 include_directories(./libs)
@@ -29,7 +30,7 @@ add_subdirectory(utils)
 add_subdirectory(libs)
 
 
-FIND_PACKAGE(Boost COMPONENTS  system filesystem thread REQUIRED )
+FIND_PACKAGE(Boost COMPONENTS  system filesystem thread program_options REQUIRED )
 if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     MESSAGE( STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}.")
@@ -46,26 +47,22 @@ if(NOT TARGET spdlog)
 endif()
 
 
-
 add_executable(sEngine ${DIR_SRCS})
+
+# 引用的开源库
 
 target_link_libraries(sEngine ${Boost_LIBRARIES})
 target_link_libraries(sEngine spdlog::spdlog)
 
-
-target_link_libraries(sEngine mysqlcppconn8)
-
-
 target_link_libraries(sEngine database)
 target_link_libraries(sEngine configParser)
 target_link_libraries(sEngine logger)
-# 引用的开源库
 
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
+    # file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
 else ()
     install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
+    # file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
 endif ()
