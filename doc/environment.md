@@ -8,7 +8,7 @@ Clion
 
 - mysql == 8.0
 
-- Mysql Connector/C++ == 8.0.28
+- Mysql c++ api
 
 - boost == 1.67.0
 
@@ -18,6 +18,6 @@ Clion
 
 ## 编译环境
 
-CMake >= 3.20
+CMake >= 3.18
 
-g++ == 11.2.0
+g++ >= 8.0

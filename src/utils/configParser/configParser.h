@@ -40,6 +40,12 @@ namespace configParser {
  */
     int get_config(const std::string &key, void* data);
 
+    /**
+     * 检测config完整性
+     * @return
+     */
+    int check_config_integrity();
+
 }
 
 

@@ -7,8 +7,6 @@
 logging::logger log_main("main");
 int main() {
 
-    Database::example();
-
     log_main.info(__LINE__, "sEngine starting...");
 
     configParser::parse("config.ini");
