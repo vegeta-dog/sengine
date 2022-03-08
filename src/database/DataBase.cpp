@@ -11,16 +11,21 @@
 #include<stdlib.h>
 
 
+
 logging::logger log_DataBase("DataBase");
 
-void Database::example()
-{
-    std::cout<<"xxxxx"<<std::endl;
+
+
+
+
+void Database::example() {
+    std::cout << "xxxxx" << std::endl;
 }
 
 Database::DataBase::~DataBase() {
-    //this->session.close();
-    //free(this->session);
+    mysql_close(this->conn);
+
+    log_DataBase.info(__LINE__, "Database object destructed.");
 }
 
 Database::DataBase::DataBase() {
@@ -32,8 +37,8 @@ Database::DataBase::DataBase() {
 
 
     configParser::get_config("DataBase.mysql_port", &str_data);
-    char* ptr;
-    this->mysql_port = atoi(str_data.c_str());
+    char *ptr;
+    this->mysql_port = boost::lexical_cast<int>(str_data);
 
     configParser::get_config("DataBase.mysql_username", &str_data);
     this->mysql_username = str_data;
@@ -44,22 +49,26 @@ Database::DataBase::DataBase() {
     configParser::get_config("DataBase.mysql_database_name", &str_data);
     this->mysql_database_name = str_data;
 
+    configParser::get_config("DataBase.redis_host", &str_data);
+    this->redis_host = str_data;
 
-    conn = mysql_real_connect(conn, this->mysql_host.c_str(), this->mysql_username.c_str(), this->mysql_password.c_str(), this->mysql_database_name.c_str(),
+    configParser::get_config("DataBase.redis_port", &str_data);
+    this->redis_port = boost::lexical_cast<int>(str_data);
+
+    configParser::get_config("DataBase.redis_username", &str_data);
+    this->redis_host = str_data;
+
+    conn = mysql_real_connect(conn, this->mysql_host.c_str(), this->mysql_username.c_str(),
+                              this->mysql_password.c_str(), this->mysql_database_name.c_str(),
                               this->mysql_port, NULL, 0);
 
 
-    if(conn == NULL)
-    {
+    if (conn == NULL) {
         log_DataBase.error(__LINE__, "conn is NULL.");
         exit(0);
     }
 
     log_DataBase.info(__LINE__, "Successfully connected to MySQL server via mysql api!");
-
-
-
-
 
 
 }

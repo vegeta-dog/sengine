@@ -7,6 +7,7 @@
 
 
 #include<mysql/mysql.h>
+#include "redis_pool.h"
 
 #include "logger/logger.h"
 
@@ -29,10 +30,12 @@ namespace Database {
         int redis_port;
         std::string redis_username;
         std::string redis_password;
+        int redis_max_conn_num;
 
 
         MYSQL *conn = mysql_init(NULL);
 
+        redis_pool* redis_conn_pool;
 
     };
 
