@@ -15,7 +15,7 @@
 
 #include<boost/filesystem.hpp>
 
-#define MAX_CONFIG_NUM 10
+#define MAX_CONFIG_NUM 100
 
 logging::logger log_configParser("configParser");
 
@@ -33,12 +33,12 @@ static std::pair<std::string, bool> config_req[MAX_CONFIG_NUM] =
                 std::make_pair("DataBase.mysql_username", true),
                 std::make_pair("DataBase.mysql_password", false),
                 std::make_pair("DataBase.mysql_database_name", true),
+                std::make_pair("DataBase.mysql_pool_max_conn", false),
                 std::make_pair("DataBase.redis_host", true),
                 std::make_pair("DataBase.redis_port", false),
                 std::make_pair("DataBase.redis_username", false),
                 std::make_pair("DataBase.redis_password", false),
                 std::make_pair("DataBase.redis_pool_max_conn", false),
-
         };
 
 /**
@@ -50,7 +50,8 @@ static std::map<std::string, std::string> config_default_val =
                 {"DataBase.redis_port",          "6379"},
                 {"DataBase.redis_username",      ""},
                 {"DataBase.redis_password",      ""},
-                {"DataBase.redis_pool_max_conn", "10"}
+                {"DataBase.redis_pool_max_conn", "10"},
+                {"DataBase.mysql_pool_max_conn", "10"},
 
         };
 
@@ -119,6 +120,8 @@ int configParser::check_config_integrity() {
     std::string data;
 
     for (int i = 0; i < MAX_CONFIG_NUM; ++i) {
+        if(req->first == "")
+                break;
         sprintf(buf, "Checking config: %s...", req->first.c_str());
         log_configParser.info(__LINE__, buf);
 

@@ -11,8 +11,9 @@
 #include "logger/logger.h"
 #include "iostream"
 
-#define redis_pool_CONN_NULL 1
-#define redis_pool_CONN_FLAG_NULL 2
+#define E_redis_pool_CONN_NULL 1
+#define E_redis_pool_CONN_FLAG_NULL 2
+#define E_redis_pool_CONN_CANNOT_ESTABLISH 3
 
 namespace DataBase::RedisPool {
     /**
@@ -22,7 +23,6 @@ namespace DataBase::RedisPool {
     static logging::logger log_redis_pool("redis_pool");
 
     class redis_pool {
-
     public:
         redis_pool() = default;
 
@@ -51,13 +51,13 @@ namespace DataBase::RedisPool {
             conn_pool = new redisContext *[conn_num];
             if (conn_pool == NULL) {
                 log_redis_pool.error(__LINE__, "Cannot allocate redisContext group!");
-                return redis_pool_CONN_NULL;
+                return E_redis_pool_CONN_NULL;
             }
 
             conn_flag = new bool[conn_num];
             if (conn_flag == NULL) {
                 log_redis_pool.error(__LINE__, "Cannot allocate conn_flag!");
-                return redis_pool_CONN_FLAG_NULL;
+                return E_redis_pool_CONN_FLAG_NULL;
             }
 
             for (int i = 0; i < conn_num; ++i) {
@@ -66,7 +66,7 @@ namespace DataBase::RedisPool {
                     char buf[256];
                     sprintf(buf, "redisConnect can not be established! Error code:%d", conn_pool[i]->err);
                     log_redis_pool.error(__LINE__, buf);
-                    return 3;
+                    return E_redis_pool_CONN_CANNOT_ESTABLISH;
                 }
 
                 conn_flag[i] = false;
@@ -97,7 +97,7 @@ namespace DataBase::RedisPool {
             return conn_pool[id];
         }
 
-        void put_conn(int id) {
+        void free_conn(int id) {
             if (id < conn_num && id >= 0) {
                 mtx.lock();
 
