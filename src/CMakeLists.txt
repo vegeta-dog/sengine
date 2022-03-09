@@ -54,10 +54,11 @@ add_executable(sEngine ${DIR_SRCS})
 # 引用的开源库
 target_link_libraries(sEngine ${Boost_LIBRARIES})
 target_link_libraries(sEngine spdlog::spdlog)
+target_link_libraries(sEngine hiredis)
 
 target_link_libraries(sEngine database)
-target_link_libraries(sEngine configParser)
 target_link_libraries(sEngine logger)
+target_link_libraries(sEngine configParser)
 
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

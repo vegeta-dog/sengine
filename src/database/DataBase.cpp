@@ -11,11 +11,7 @@
 #include<stdlib.h>
 
 
-
 logging::logger log_DataBase("DataBase");
-
-
-
 
 
 void Database::example() {
@@ -56,7 +52,10 @@ Database::DataBase::DataBase() {
     this->redis_port = boost::lexical_cast<int>(str_data);
 
     configParser::get_config("DataBase.redis_username", &str_data);
-    this->redis_host = str_data;
+    this->redis_username = str_data;
+    configParser::get_config("DataBase.redis_pool_max_conn", &str_data);
+    this->redis_max_conn_num = boost::lexical_cast<int>(str_data);
+
 
     conn = mysql_real_connect(conn, this->mysql_host.c_str(), this->mysql_username.c_str(),
                               this->mysql_password.c_str(), this->mysql_database_name.c_str(),
@@ -70,5 +69,18 @@ Database::DataBase::DataBase() {
 
     log_DataBase.info(__LINE__, "Successfully connected to MySQL server via mysql api!");
 
+
+    /**
+     * 初始化redis连接池
+     */
+    this->redis_conn_pool = new ::DataBase::RedisPool::redis_pool();
+    int errcode = 0;
+    errcode = this->redis_conn_pool->init(this->redis_host, boost::lexical_cast<int>(this->redis_port),
+                                          boost::lexical_cast<int>(this->redis_max_conn_num));
+    if (errcode) {
+        char code[128];
+        sprintf(code, "Failed to establish redis Connect. code: %d", errcode);
+        log_DataBase.error(__LINE__, code);
+    }
 
 }

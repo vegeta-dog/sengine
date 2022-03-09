@@ -1,7 +1,7 @@
 //
 // Created by longjin on 2022/03/05.
 //
-
+#pragma once
 #ifndef SENGINE_DATABASE_H
 #define SENGINE_DATABASE_H
 
@@ -35,7 +35,7 @@ namespace Database {
 
         MYSQL *conn = mysql_init(NULL);
 
-        redis_pool* redis_conn_pool;
+        ::DataBase::RedisPool::redis_pool* redis_conn_pool;
 
     };
 

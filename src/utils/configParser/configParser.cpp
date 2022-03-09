@@ -24,6 +24,7 @@ boost::property_tree::ptree config;
 (                                           \
     str.substr(0, str.find('.'))   \
 )
+static std::map<std::string, std::string> config_map;
 
 static std::pair<std::string, bool> config_req[MAX_CONFIG_NUM] =
         {
@@ -43,21 +44,18 @@ static std::pair<std::string, bool> config_req[MAX_CONFIG_NUM] =
 /**
  *  各种参数的默认值
  */
-static std::map<std::string , std::string > config_default_val =
+static std::map<std::string, std::string> config_default_val =
         {
-                {"DataBase.mysql_port", "3306"},
-                {"DataBase.redis_port", "6379"},
-                {"DataBase.redis_username", ""},
-                {"DataBase.redis_password",""},
+                {"DataBase.mysql_port",          "3306"},
+                {"DataBase.redis_port",          "6379"},
+                {"DataBase.redis_username",      ""},
+                {"DataBase.redis_password",      ""},
                 {"DataBase.redis_pool_max_conn", "10"}
 
         };
 
 /** 解析配置文件
  * @param path 文件路径
- * @param conf_str string类型的参数
- * @param conf_int int类型的参数
- * @param conf_double 浮点类型的参数
  * @return
  */
 int configParser::parse(const std::string &path) {
@@ -80,23 +78,35 @@ int configParser::parse(const std::string &path) {
 };
 
 /**
- * 获取配置项
- * @param key 关键字，格式为 <section, key_name>
+ * 从map中获取配置项
+ * @param key 关键字，格式为 section.key
  * @param data 返回数据的指针
  */
 
-int configParser::get_config(const std::string &key, void *data) {
+int configParser::get_config(const std::string &key, std::string *data) {
+    try
+    {
 
-    std::string type = GET_SECTION(key);
+        *(std::string *) data = config_map[key];
+        return SUCCESS;
+    }
+    catch (const std::exception &e)
+    {
+        char buf[256];
+        sprintf(buf, "Key not exists: %s", key.c_str());
+        log_configParser.error(__LINE__, buf);
+        return E_KEY_NOT_EXISTS;
+    }
+}
 
-    if (type == "int")
-        *(int *) data = config.get<int>(key);
-    else if (type == "double")
-        *(double *) data = config.get<double>(key);
-    else if (type == "float")
-        *(float *) data = config.get<float>(key);
-    else
-        *(std::string *) data = config.get<std::string>(key);
+/**
+     * 从文件获取config信息
+     * @param key 关键字，格式为 section.key
+     * @param data 返回数据的指针
+     * @return
+     */
+static int configParser::get_config_from_file(const std::string &key, std::string *data) {\
+    *(std::string *) data = config.get<std::string>(key);
     return SUCCESS;
 }
 
@@ -113,25 +123,23 @@ int configParser::check_config_integrity() {
         log_configParser.info(__LINE__, buf);
 
         data = "";
-        get_config(req->first, &data);
-        //log_configParser.info(__LINE__, boost::lexical_cast<std::string>(data.empty()));
+        get_config_from_file(req->first, &data);
 
-        // you should not use Clion's auto code simplify func here!!! Otherwise, the code here can go wrong!
         if (data.empty()) {
             if (req->second) {
                 sprintf(buf, "Invalid config key:%s, it cannot be NULL!", req->first.c_str());
                 log_configParser.error(__LINE__, buf);
                 exit(0);
-            }
-            else
-            {
-                sprintf(buf, "Config key:%s is empty, use default value： %s", req->first.c_str(), config_default_val[req->first].c_str());
+            } else {
+                sprintf(buf, "Config key:%s is empty, use default value： %s", req->first.c_str(),
+                        config_default_val[req->first].c_str());
                 log_configParser.warn(__LINE__, buf);
                 // 设置默认值
-                config.get_child(req->first).put_value(config_default_val[req->first]);
+                config_map[req->first] = config_default_val[req->first];
             }
 
         }
+        else config_map[req->first]  = data;
 
         ++req;
     }
