@@ -11,6 +11,10 @@
 #include "mysql_pool.h"
 #include "logger/logger.h"
 
+
+#define ON 1
+#define OFF 0
+
 namespace Database {
 
     class DataBase {
@@ -19,6 +23,8 @@ namespace Database {
 
         ~DataBase();
 
+        ::DataBase::RedisPool::redis_pool *redis_conn_pool;
+        ::DataBase::MysqlPool::mysql_pool *mysql_conn_pool;
     private:
         std::string mysql_host;
         int mysql_port;
@@ -34,12 +40,13 @@ namespace Database {
         int redis_max_conn_num;
 
 
-        ::DataBase::RedisPool::redis_pool *redis_conn_pool;
-        ::DataBase::MysqlPool::mysql_pool *mysql_conn_pool;
     };
 
-    void example();
-
+    /**
+     * 初始化mysql数据库的数据表
+     * @return
+     */
+    int init_mysql(DataBase &db);
 }
 
 

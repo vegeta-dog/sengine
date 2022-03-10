@@ -15,6 +15,10 @@ set(publish_bin_release ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release)
 set(publish_lib_debug ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug)
 set(publish_lib_release ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release)
 
+set(install_bin_debug ${CMAKE_SOURCE_DIR}/bin/Debug/)
+set(install_bin_release ${CMAKE_SOURCE_DIR}/bin/Release/)
+
+
 add_link_options(-lrt -lpthread  -lstdc++ -lboost_filesystem)
 # add_compile_options(-std=c++17)
 
@@ -32,7 +36,7 @@ add_subdirectory(utils)
 add_subdirectory(libs)
 
 set(Boost_USE_STATIC_LIBS   ON)
-FIND_PACKAGE(Boost COMPONENTS system filesystem  REQUIRED )
+FIND_PACKAGE(Boost COMPONENTS system filesystem program_options  REQUIRED )
 if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     MESSAGE( STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}.")
@@ -49,7 +53,7 @@ if(NOT TARGET spdlog)
 endif()
 
 
-add_executable(sEngine ${DIR_SRCS})
+add_executable(sEngine ${DIR_SRCS} utils/runtime/runtime.h)
 
 # 引用的开源库
 target_link_libraries(sEngine ${Boost_LIBRARIES})
@@ -62,9 +66,9 @@ target_link_libraries(sEngine configParser)
 
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
+    install(TARGETS sEngine DESTINATION ${install_bin_debug})
     # file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Debug/")
 else ()
-    install(TARGETS sEngine DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
+    install(TARGETS sEngine DESTINATION ${install_bin_release})
     # file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-release/config.ini DESTINATION "${CMAKE_SOURCE_DIR}/bin/Release/")
 endif ()

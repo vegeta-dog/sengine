@@ -76,6 +76,9 @@ namespace DataBase::MysqlPool {
                     return E_mysql_pool_CONN_CANNOT_ESTABLISH;
                 }
 
+                // 设置以;g
+                mysql_set_server_option(conn_pool[i], MYSQL_OPTION_MULTI_STATEMENTS_ON);
+
                 conn_flag[i] = false;
             }
 
@@ -85,6 +88,11 @@ namespace DataBase::MysqlPool {
             return 0;
         }
 
+        /**
+         * 获取连接
+         * @param id 返回的数据连接的序号（凭此序号归还数据库连接）
+         * @return 数据库连接
+         */
         MYSQL *get_conn(int &id) {
             if (this->conn_num_free == 0) {
                 return NULL;
@@ -92,7 +100,7 @@ namespace DataBase::MysqlPool {
 
             mtx.lock();
 
-            while (conn_flag[current_conn] != 0) { current_conn = (current_conn + 1) % this->max_conn_num; }
+            while (conn_flag[current_conn]) { current_conn = (current_conn + 1) % this->max_conn_num; }
 
             conn_flag[current_conn] = true;
             --this->conn_num_free;
@@ -108,7 +116,7 @@ namespace DataBase::MysqlPool {
             if (id < this->max_conn_num && id >= 0) {
                 mtx.lock();
 
-                conn_flag[id] = 0;
+                conn_flag[id] = false;
                 ++this->max_conn_num;
 
                 mtx.unlock();

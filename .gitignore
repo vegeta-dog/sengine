@@ -35,3 +35,5 @@ cmake-build-debug/
 /src/bin/
 /src/cmake-build-release/
 /.idea/workspace.xml
+/build/
+/.vscode/
