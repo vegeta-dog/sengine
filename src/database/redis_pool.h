@@ -14,12 +14,13 @@
 #define E_redis_pool_CONN_NULL 1
 #define E_redis_pool_CONN_FLAG_NULL 2
 #define E_redis_pool_CONN_CANNOT_ESTABLISH 3
+#define E_redis_pool_PASSWORD_INCORRECT 4
 
 namespace DataBase::RedisPool {
     /**
- * redis conn连接池
- * 由于hiRedis不是线程安全的，因此需要线程池
- */
+     * redis conn连接池
+     * 由于hiRedis不是线程安全的，因此需要线程池
+     */
     static logging::logger log_redis_pool("redis_pool");
 
     class redis_pool {
@@ -32,7 +33,6 @@ namespace DataBase::RedisPool {
                     redisFree(conn_pool[i]);
                     conn_pool[i] = NULL;
                 }
-
             }
             delete[] conn_pool;
 
@@ -42,11 +42,11 @@ namespace DataBase::RedisPool {
             }
         }
 
-        int init(std::string ip_, int port_, int conn_num_) {
+        int init(std::string ip_, int port_, int conn_num_, std::string pwd) {
             ip = ip_;
             port = port_;
             conn_num = conn_num_;
-
+            this->redis_password = pwd;
 
             conn_pool = new redisContext *[conn_num];
             if (conn_pool == NULL) {
@@ -68,6 +68,16 @@ namespace DataBase::RedisPool {
                     log_redis_pool.error(__LINE__, buf);
                     return E_redis_pool_CONN_CANNOT_ESTABLISH;
                 }
+                if (!redis_password.empty()) {
+
+                    redisReply *rep = (redisReply *) redisCommand(conn_pool[i], "AUTH %s", redis_password.c_str());
+
+                    if (rep->type == REDIS_REPLY_ERROR) {
+                        log_redis_pool.error(__LINE__,
+                                             "Authenticate to redis server failed! Please check your password.");
+                        return E_redis_pool_PASSWORD_INCORRECT;
+                    }
+                }
 
                 conn_flag[i] = false;
             }
@@ -85,7 +95,9 @@ namespace DataBase::RedisPool {
 
             mtx.lock();
 
-            while (conn_flag[current_conn] != 0) { current_conn = (current_conn + 1) % conn_num; }
+            while (conn_flag[current_conn] != 0) {
+                current_conn = (current_conn + 1) % conn_num;
+            }
 
             conn_flag[current_conn] = true;
             --empty_num;
@@ -106,7 +118,6 @@ namespace DataBase::RedisPool {
 
                 mtx.unlock();
             }
-
         }
 
     private:
@@ -119,10 +130,11 @@ namespace DataBase::RedisPool {
         int empty_num;
         int current_conn;
 
-        std::mutex mtx;
+        std::string redis_password;
 
+        std::mutex mtx;
     };
 
 }
 
-#endif //SENGINE_REDIS_POOL_H
+#endif // SENGINE_REDIS_POOL_H

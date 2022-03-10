@@ -52,8 +52,6 @@ Database::DataBase::DataBase() {
     configParser::get_config("DataBase.redis_port", &str_data);
     this->redis_port = boost::lexical_cast<int>(str_data);
 
-    configParser::get_config("DataBase.redis_username", &str_data);
-    this->redis_username = str_data;
 
     configParser::get_config("DataBase.redis_password", &str_data);
     this->redis_password = str_data;
@@ -61,22 +59,31 @@ Database::DataBase::DataBase() {
     configParser::get_config("DataBase.redis_pool_max_conn", &str_data);
     this->redis_max_conn_num = boost::lexical_cast<int>(str_data);
 
+    int errcode = 0;
+
     // 初始化MySQL连接池
     this->mysql_conn_pool = new ::DataBase::MysqlPool::mysql_pool();
-    this->mysql_conn_pool->init(this->mysql_host, this->mysql_port, this->mysql_max_conn_num, this->mysql_username,
-                                this->mysql_password, this->mysql_database_name);
-
+    errcode = this->mysql_conn_pool->init(this->mysql_host, this->mysql_port, this->mysql_max_conn_num,
+                                          this->mysql_username,
+                                          this->mysql_password, this->mysql_database_name);
+    if (errcode) {
+        char code[128];
+        sprintf(code, "Failed to create mysql conn pool. code: %d", errcode);
+        log_DataBase.error(__LINE__, code);
+        exit(0);
+    }
     /**
      * 初始化redis连接池
      */
     this->redis_conn_pool = new ::DataBase::RedisPool::redis_pool();
-    int errcode = 0;
+
     errcode = this->redis_conn_pool->init(this->redis_host, boost::lexical_cast<int>(this->redis_port),
-                                          boost::lexical_cast<int>(this->redis_max_conn_num));
+                                          boost::lexical_cast<int>(this->redis_max_conn_num), this->redis_password);
     if (errcode) {
         char code[128];
-        sprintf(code, "Failed to establish redis Connect. code: %d", errcode);
+        sprintf(code, "Failed to create redis conn pool. code: %d", errcode);
         log_DataBase.error(__LINE__, code);
+        exit(0);
     }
 }
 

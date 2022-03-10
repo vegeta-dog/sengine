@@ -35,7 +35,6 @@ namespace Database {
         std::string mysql_database_name;
         std::string redis_host;
         int redis_port;
-        std::string redis_username;
         std::string redis_password;
         int redis_max_conn_num;
 
