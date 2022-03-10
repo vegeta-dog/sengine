@@ -30,6 +30,7 @@ include_directories(/usr/local/include)
 include_directories(./database)
 include_directories(./utils)
 include_directories(./libs)
+include_directories(./libs/kafka)
 
 add_subdirectory(database)
 add_subdirectory(utils)
@@ -53,7 +54,7 @@ if(NOT TARGET spdlog)
 endif()
 
 
-add_executable(sEngine ${DIR_SRCS} utils/runtime/runtime.h)
+add_executable(sEngine ${DIR_SRCS})
 
 # 引用的开源库
 target_link_libraries(sEngine ${Boost_LIBRARIES})
