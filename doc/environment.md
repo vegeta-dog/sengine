@@ -10,14 +10,31 @@ Clion
 
 - Mysql c++ api
 
+- hiredis == 1.0.2
+
+
+## 编译环境
+
+- CMake >= 3.18
+
+- g++ >= 8.0
+
 - boost == 1.67.0
 
 - spdlog == 1.9.2
 
 - libmysqlclient-dev (需先安装mysql apt config)
 
-## 编译环境
+- libzstd-dev == 1.4.8
 
-CMake >= 3.18
+- libssl-dev
 
-g++ >= 8.0
+- zlib-dev
+
+- libsasl2-dev
+
+- pthreads
+
+- modern-cpp-kafka == 2021.12.08
+
+- librdkafka == 1.6.2

@@ -20,7 +20,9 @@ set(install_bin_release ${CMAKE_SOURCE_DIR}/bin/Release/)
 
 
 add_link_options(-lrt -lpthread  -lstdc++ -lboost_filesystem)
-# add_compile_options(-std=c++17)
+# 链接rdkafka需要的库
+add_link_options(-ldl -lssl)
+
 
 # 将当前目录下的代码添加到DIR_SRCS变量
 aux_source_directory(. DIR_SRCS)
@@ -35,6 +37,7 @@ include_directories(./libs/kafka)
 add_subdirectory(database)
 add_subdirectory(utils)
 add_subdirectory(libs)
+
 
 set(Boost_USE_STATIC_LIBS   ON)
 FIND_PACKAGE(Boost COMPONENTS system filesystem program_options  REQUIRED )
@@ -60,6 +63,7 @@ add_executable(sEngine ${DIR_SRCS})
 target_link_libraries(sEngine ${Boost_LIBRARIES})
 target_link_libraries(sEngine spdlog::spdlog)
 target_link_libraries(sEngine hiredis)
+target_link_libraries(sEngine librdkafka.a crypto libzstd.a z)
 
 target_link_libraries(sEngine database)
 target_link_libraries(sEngine logger)
