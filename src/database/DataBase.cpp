@@ -88,7 +88,7 @@ int Database::init_mysql(DataBase &db) {
     int conn_id;
     MYSQL *conn = db.mysql_conn_pool->get_conn(conn_id);
 
-    log_DataBase.info(__LINE__, "Initializing MySQL data base...");
+    log_DataBase.info(__LINE__, "Initializing MySQL data tables...");
 
     // 先读取sql语句
     std::string cwd = boost::filesystem::initial_path<boost::filesystem::path>().string();
