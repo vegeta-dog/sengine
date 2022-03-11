@@ -19,7 +19,7 @@ set(install_bin_debug ${CMAKE_SOURCE_DIR}/bin/Debug/)
 set(install_bin_release ${CMAKE_SOURCE_DIR}/bin/Release/)
 
 
-add_link_options(-lrt -lpthread  -lstdc++ -lboost_filesystem)
+add_link_options(-lrt -lpthread  -lstdc++ -lboost_filesystem -ldl)
 # 链接rdkafka需要的库
 add_link_options(-ldl -lssl)
 
@@ -40,7 +40,7 @@ add_subdirectory(libs)
 
 
 set(Boost_USE_STATIC_LIBS   ON)
-FIND_PACKAGE(Boost COMPONENTS system filesystem program_options  REQUIRED )
+FIND_PACKAGE(Boost COMPONENTS system filesystem program_options thread REQUIRED )
 if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     MESSAGE( STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}.")

@@ -29,7 +29,7 @@ Clion
 
 - libssl-dev
 
-- zlib-dev
+- zlib1g-dev
 
 - libsasl2-dev
 

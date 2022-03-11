@@ -1,9 +1,11 @@
 #include <iostream>
-#include <database/DataBase.h>
-#include <utils/configParser/configParser.h>
-#include <utils/logger/logger.h>
-#include <libs/kafka/KafkaProducer.h>
+#include "database/DataBase.h"
+#include "utils/configParser/configParser.h"
+#include "utils/logger/logger.h"
+#include "libs/kafka/KafkaProducer.h"
+#include "libs/kafka/KafkaConsumer.h"
 #include <boost/program_options.hpp>
+#include<boost/thread.hpp>
 #include <map>
 
 namespace bpo = boost::program_options;
@@ -26,7 +28,7 @@ void do_init_mysql()
     Database::init_mysql(db);
 }
 
-void do_test_kafka()
+void kafka_producer()
 {
     using namespace kafka::clients;
     std::cout << "Test kafka." << std::endl;
@@ -35,41 +37,102 @@ void do_test_kafka()
 
     // Create configuration object
     kafka::Properties props({
-        {"bootstrap.servers", brokers},
-        {"enable.idempotence", "true"},
-    });
+                                    {"bootstrap.servers", brokers},
+                                    {"enable.idempotence", "true"},
+                            });
 
     // Create a producer instance.
     kafka::clients::KafkaProducer producer(props);
 
-     // Read messages from stdin and produce to the broker
-        std::cout << "% Type message value and hit enter to produce message. (empty line to quit)" << std::endl;
+    // Read messages from stdin and produce to the broker
+    std::cout << "% Type message value and hit enter to produce message. (empty line to quit)" << std::endl;
 
-        for (auto line = std::make_shared<std::string>();
-             std::getline(std::cin, *line);
-             line = std::make_shared<std::string>()) {
-            // The ProducerRecord doesn't own `line`, it is just a thin wrapper
-            auto record = producer::ProducerRecord(topic,
-                                                   kafka::NullKey,
-                                                   kafka::Value(line->c_str(), line->size()));
+    for (auto line = std::make_shared<std::string>();
+         std::getline(std::cin, *line);
+         line = std::make_shared<std::string>()) {
+        // The ProducerRecord doesn't own `line`, it is just a thin wrapper
+        auto record = producer::ProducerRecord(topic,
+                                               kafka::NullKey,
+                                               kafka::Value(line->c_str(), line->size()));
 
-            // Send the message
-            producer.send(record,
-                          // The delivery report handler
-                          // Note: Here we capture the shared_pointer of `line`,
-                          //       which holds the content for `record.value()`.
-                          //       It makes sure the memory block is valid until the lambda finishes.
-                          [line](const producer::RecordMetadata& metadata, const kafka::Error& error) {
-                              if (!error) {
-                                  std::cout << "% Message delivered: " << metadata.toString() << std::endl;
-                              } else {
-                                  std::cerr << "% Message delivery failed: " << error.message() << std::endl;
-                              }
-                          });
+        // Send the message
+        producer.send(record,
+                // The delivery report handler
+                // Note: Here we capture the shared_pointer of `line`,
+                //       which holds the content for `record.value()`.
+                //       It makes sure the memory block is valid until the lambda finishes.
+                      [line](const producer::RecordMetadata& metadata, const kafka::Error& error) {
+                          if (!error) {
+                              std::cout << "% Message delivered: " << metadata.toString() << std::endl;
+                          } else {
+                              std::cerr << "% Message delivery failed: " << error.message() << std::endl;
+                          }
+                      });
 
-            if (line->empty()) break;
+        if (line->empty()) break;
+    }
+}
+
+int kafka_consumer()
+{
+    std::string brokers = "192.168.5.215:9092";
+    kafka::Topic topic = "tp";
+
+    // Create configuration object
+    kafka::Properties props({
+                                    {"bootstrap.servers", brokers},
+                                    {"enable.idempotence", "true"},
+                            });
+    try {
+
+        // Create configuration object
+        kafka::Properties props ({
+                                         {"bootstrap.servers",  brokers},
+                                         {"enable.auto.commit", "true"}
+                                 });
+
+        // Create a consumer instance
+        kafka::clients::KafkaConsumer consumer(props);
+
+        // Subscribe to topics
+        consumer.subscribe({topic});
+
+        // Read messages from the topic
+        std::cout << "% Reading messages from topic: " << topic << std::endl;
+        while (true) {
+            auto records = consumer.poll(std::chrono::milliseconds(100));
+            for (const auto& record: records) {
+                // In this example, quit on empty message
+                if (record.value().size() == 0) return 0;
+
+                if (!record.error()) {
+                    std::cout << "% Got a new message..." << std::endl;
+                    std::cout << "    Topic    : " << record.topic() << std::endl;
+                    std::cout << "    Partition: " << record.partition() << std::endl;
+                    std::cout << "    Offset   : " << record.offset() << std::endl;
+                    std::cout << "    Timestamp: " << record.timestamp().toString() << std::endl;
+                    std::cout << "    Headers  : " << kafka::toString(record.headers()) << std::endl;
+                    std::cout << "    Key   [" << record.key().toString() << "]" << std::endl;
+                    std::cout << "    Value [" << record.value().toString() << "]" << std::endl;
+                } else {
+                    std::cerr << record.toString() << std::endl;
+                }
+            }
         }
 
+        // consumer.close(); // No explicit close is needed, RAII will take care of it
+
+    } catch (const kafka::KafkaException& e) {
+        std::cerr << "% Unexpected exception caught: " << e.what() << std::endl;
+    }
+    return 0;
+}
+void do_test_kafka()
+{
+    boost::thread p(&kafka_producer);
+    boost::thread c(&kafka_consumer);
+    p.join();
+    c.join();
 }
 
 int main(int argc, char const *argv[])

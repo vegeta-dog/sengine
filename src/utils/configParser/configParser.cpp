@@ -38,6 +38,7 @@ static std::pair<std::string, bool> config_req[MAX_CONFIG_NUM] =
                 std::make_pair("DataBase.redis_port", false),
                 std::make_pair("DataBase.redis_password", false),
                 std::make_pair("DataBase.redis_pool_max_conn", false),
+                std::make_pair("Kafka.kafka_brokers", true),
         };
 
 /**
