@@ -19,9 +19,6 @@ set(install_bin_debug ${CMAKE_SOURCE_DIR}/bin/Debug/)
 set(install_bin_release ${CMAKE_SOURCE_DIR}/bin/Release/)
 
 
-add_link_options(-lrt -lpthread  -lstdc++ -lboost_filesystem -ldl)
-# 链接rdkafka需要的库
-add_link_options(-ldl -lssl)
 
 
 # 将当前目录下的代码添加到DIR_SRCS变量
@@ -34,10 +31,19 @@ include_directories(./utils)
 include_directories(./libs)
 include_directories(./libs/kafka)
 
+link_directories(/usr/lib)
+link_directories(/usr/local/lib)
+
 add_subdirectory(database)
 add_subdirectory(utils)
 add_subdirectory(libs)
 
+add_link_options( -lrt -lpthread  -lstdc++ -lboost_filesystem)
+
+# 链接rdkafka需要的库
+add_link_options( -lssl -lz -ldl )
+
+set (CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
 
 set(Boost_USE_STATIC_LIBS   ON)
 FIND_PACKAGE(Boost COMPONENTS system filesystem program_options thread REQUIRED )
@@ -51,10 +57,12 @@ else ()
     message("Can not found BOOST")
 endif ()
 
+
 if(NOT TARGET spdlog)
     # Stand-alone build
     find_package(spdlog REQUIRED)
 endif()
+
 
 
 add_executable(sEngine ${DIR_SRCS})
@@ -63,7 +71,8 @@ add_executable(sEngine ${DIR_SRCS})
 target_link_libraries(sEngine ${Boost_LIBRARIES})
 target_link_libraries(sEngine spdlog::spdlog)
 target_link_libraries(sEngine hiredis)
-target_link_libraries(sEngine librdkafka.a crypto libzstd.a z)
+target_link_libraries(sEngine libssl.a sasl2 crypto librdkafka.a z libzstd.a )
+# target_link_libraries(sEngine crypto -static-libgcc -static-libstdc++ librdkafka++.a librdkafka.a z libzstd.a  )
 
 target_link_libraries(sEngine database)
 target_link_libraries(sEngine logger)

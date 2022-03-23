@@ -15,29 +15,28 @@ logging::logger log_main("main");
 /**
  * 运行所有服务
  */
-void do_run_all()
-{
+void do_run_all() {
     std::cout << "Run all." << std::endl;
 }
 
-void do_init_mysql()
-{
+void do_init_mysql() {
     configParser::parse("config.ini");
     Database::DataBase db;
 
     Database::init_mysql(db);
 }
 
-void kafka_producer()
-{
+void kafka_producer() {
+    configParser::parse("config.ini");
     using namespace kafka::clients;
     std::cout << "Test kafka." << std::endl;
-    std::string brokers = "192.168.5.215:9092";
+    std::string brokers;
+    configParser::get_config("Kafka.kafka_brokers", &brokers);
     kafka::Topic topic = "tp";
 
     // Create configuration object
     kafka::Properties props({
-                                    {"bootstrap.servers", brokers},
+                                    {"bootstrap.servers",  brokers},
                                     {"enable.idempotence", "true"},
                             });
 
@@ -47,13 +46,14 @@ void kafka_producer()
     // Read messages from stdin and produce to the broker
     std::cout << "% Type message value and hit enter to produce message. (empty line to quit)" << std::endl;
 
-    for (auto line = std::make_shared<std::string>();
-         std::getline(std::cin, *line);
-         line = std::make_shared<std::string>()) {
+    int count = 0;
+    while (count < 10) {
+        std::shared_ptr<std::string> str = std::make_shared<std::string>();
+        *str = boost::lexical_cast<std::string>(count);
         // The ProducerRecord doesn't own `line`, it is just a thin wrapper
         auto record = producer::ProducerRecord(topic,
                                                kafka::NullKey,
-                                               kafka::Value(line->c_str(), line->size()));
+                                               kafka::Value(str->c_str(), str->size()));
 
         // Send the message
         producer.send(record,
@@ -61,35 +61,37 @@ void kafka_producer()
                 // Note: Here we capture the shared_pointer of `line`,
                 //       which holds the content for `record.value()`.
                 //       It makes sure the memory block is valid until the lambda finishes.
-                      [line](const producer::RecordMetadata& metadata, const kafka::Error& error) {
+                      [str](const producer::RecordMetadata &metadata, const kafka::Error &error) {
                           if (!error) {
                               std::cout << "% Message delivered: " << metadata.toString() << std::endl;
                           } else {
                               std::cerr << "% Message delivery failed: " << error.message() << std::endl;
                           }
                       });
-
-        if (line->empty()) break;
+        ++count;
+        boost::this_thread::sleep(boost::posix_time::seconds(1));
     }
 }
 
-int kafka_consumer()
-{
-    std::string brokers = "192.168.5.215:9092";
+int kafka_consumer() {
+    configParser::parse("config.ini");
+
+    std::string brokers;
+    configParser::get_config("Kafka.kafka_brokers", &brokers);
     kafka::Topic topic = "tp";
 
     // Create configuration object
     kafka::Properties props({
-                                    {"bootstrap.servers", brokers},
+                                    {"bootstrap.servers",  brokers},
                                     {"enable.idempotence", "true"},
                             });
     try {
 
         // Create configuration object
-        kafka::Properties props ({
-                                         {"bootstrap.servers",  brokers},
-                                         {"enable.auto.commit", "true"}
-                                 });
+        kafka::Properties props({
+                                        {"bootstrap.servers",  brokers},
+                                        {"enable.auto.commit", "true"}
+                                });
 
         // Create a consumer instance
         kafka::clients::KafkaConsumer consumer(props);
@@ -101,7 +103,7 @@ int kafka_consumer()
         std::cout << "% Reading messages from topic: " << topic << std::endl;
         while (true) {
             auto records = consumer.poll(std::chrono::milliseconds(100));
-            for (const auto& record: records) {
+            for (const auto &record: records) {
                 // In this example, quit on empty message
                 if (record.value().size() == 0) return 0;
 
@@ -122,21 +124,20 @@ int kafka_consumer()
 
         // consumer.close(); // No explicit close is needed, RAII will take care of it
 
-    } catch (const kafka::KafkaException& e) {
+    } catch (const kafka::KafkaException &e) {
         std::cerr << "% Unexpected exception caught: " << e.what() << std::endl;
     }
     return 0;
 }
-void do_test_kafka()
-{
+
+void do_test_kafka() {
     boost::thread p(&kafka_producer);
     boost::thread c(&kafka_consumer);
     p.join();
     c.join();
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
 
     log_main.info(__LINE__, "sEngine starting...");
 
@@ -156,19 +157,16 @@ int main(int argc, char const *argv[])
     // 没有指定参数则直接运行所有服务
     if (vm.empty())
         do_run_all();
-    if (vm.count("help"))
-    {
+    if (vm.count("help")) {
         std::cout << opts << std::endl;
         exit(0);
     }
-    if (vm.count("init-mysql"))
-    {
+    if (vm.count("init-mysql")) {
         do_init_mysql();
         exit(0);
     }
 
-    if (vm.count("test-kafka"))
-    {
+    if (vm.count("test-kafka")) {
         do_test_kafka();
         exit(0);
     }
