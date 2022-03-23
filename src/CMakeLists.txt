@@ -27,6 +27,7 @@ aux_source_directory(. DIR_SRCS)
 include_directories(/usr/include)
 include_directories(/usr/local/include)
 include_directories(./database)
+include_directories(./evaluator)
 include_directories(./utils)
 include_directories(./libs)
 include_directories(./libs/kafka)
@@ -37,6 +38,7 @@ link_directories(/usr/local/lib)
 add_subdirectory(database)
 add_subdirectory(utils)
 add_subdirectory(libs)
+add_subdirectory(evaluator)
 
 add_link_options( -lrt -lpthread  -lstdc++ -lboost_filesystem)
 
@@ -77,6 +79,7 @@ target_link_libraries(sEngine libssl.a sasl2 crypto librdkafka.a z libzstd.a )
 target_link_libraries(sEngine database)
 target_link_libraries(sEngine logger)
 target_link_libraries(sEngine configParser)
+target_link_libraries(sEngine evaluator)
 
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
