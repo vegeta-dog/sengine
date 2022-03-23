@@ -2,6 +2,7 @@ from flask import Flask, request
 
 webapi_app = Flask("sEngine_webapi")
 
+
 @webapi_app.route('/', methods=['post', 'get'])
 def webapi():
     if request.method != 'post':
@@ -20,3 +21,5 @@ def webapi():
         # todo:接下来需要调用检索器
 
 
+if __name__ == '__main__':
+    webapi_app.run(port=56666)
