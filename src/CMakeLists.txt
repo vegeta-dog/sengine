@@ -76,6 +76,7 @@ target_link_libraries(sEngine hiredis)
 target_link_libraries(sEngine libssl.a sasl2 crypto librdkafka.a z libzstd.a )
 # target_link_libraries(sEngine crypto -static-libgcc -static-libstdc++ librdkafka++.a librdkafka.a z libzstd.a  )
 
+target_link_libraries(sEngine kafka_client)
 target_link_libraries(sEngine database)
 target_link_libraries(sEngine logger)
 target_link_libraries(sEngine configParser)
