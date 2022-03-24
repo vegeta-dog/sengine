@@ -56,7 +56,7 @@ void Kafka_cli::consumer::worker()
 
 unsigned int Kafka_cli::get_consumer_id()
 {
-    unsigned ret;
+    unsigned int ret;
     mtx_comsumer_id.lock();
 
     ret = max_consumer_id++;
@@ -114,7 +114,7 @@ void Kafka_cli::producer::send(const std::string &msg)
 
 unsigned int Kafka_cli::get_producer_id()
 {
-    unsigned ret;
+    unsigned int ret;
     mtx_producer_id.lock();
 
     ret = max_producer_id++;
