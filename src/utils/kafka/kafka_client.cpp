@@ -1,11 +1,12 @@
 #include "kafka_client.h"
 #include <boost/lexical_cast.hpp>
 
-Kafka_cli::consumer::consumer(std::string brokers, std::string topic, bool auto_commit, void (*hdl)(kafka::clients::consumer::ConsumerRecord))
+Kafka_cli::consumer::consumer(std::string brokers, std::string topic, bool auto_commit, std::string group_id, void (*hdl)(kafka::clients::consumer::ConsumerRecord))
 {
     this->brokers = brokers;
     this->topic = topic;
     this->handler = hdl;
+    this->group_id = group_id;
     this->consumer_obj_id = get_consumer_id();
 
     this->log = new logging::logger("consumer " + boost::lexical_cast<std::string>(this->consumer_obj_id));
@@ -14,6 +15,7 @@ Kafka_cli::consumer::consumer(std::string brokers, std::string topic, bool auto_
     kafka::Properties props({
         {"bootstrap.servers", this->brokers},
         {"enable.auto.commit", (auto_commit ? "true" : "false")},
+        {"group.id", this->group_id},
     });
 
     this->csm = new kafka::clients::KafkaConsumer(props);

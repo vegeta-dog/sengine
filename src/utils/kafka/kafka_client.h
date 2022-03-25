@@ -50,12 +50,13 @@ namespace Kafka_cli
          * @param auto_commit auto commit?
          * @param handler 数据上半部处理函数
          */
-        consumer(std::string brokers, std::string topic, bool auto_commit, void (*handler)(kafka::clients::consumer::ConsumerRecord));
+        consumer(std::string brokers, std::string topic, bool auto_commit, std::string group_id, void (*handler)(kafka::clients::consumer::ConsumerRecord));
         ~consumer();
         void worker();
 
     private:
         std::string brokers;
+        std::string group_id;
         kafka::Topic topic;
         kafka::clients::KafkaConsumer *csm;
         logging::logger *log;
