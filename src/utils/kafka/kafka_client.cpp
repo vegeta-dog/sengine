@@ -141,3 +141,15 @@ unsigned int Kafka_cli::get_producer_id()
     mtx_producer_id.unlock();
     return ret;
 }
+
+void Kafka_cli::do_start_kafka_consumer(const std::string &brokers, const std::string &topic, std::string group_id, void (*handler)(kafka::clients::consumer::ConsumerRecord))
+{
+    Kafka_cli::consumer csm(brokers, topic, true, group_id, handler);
+    csm.worker();
+}
+
+void Kafka_cli::do_start_kafka_producer(const std::string &brokers, const std::string &topic, std::string (*handler)(void))
+{
+    Kafka_cli::producer pdc(brokers, topic, handler);
+    pdc.worker();
+}

@@ -4,6 +4,7 @@
 
 #ifndef SENGINE_EVALUATOR_H
 #define SENGINE_EVALUATOR_H
+
 #include "../utils/logger/logger.h"
 #include "../utils/kafka/kafka_client.h"
 #include "../database/DataBase.h"
@@ -71,7 +72,7 @@ namespace Evaluator
      * 
      * @return std::string 
      */
-    std::string send_msg_handler();
+    std::string send_msg2indexBuilder_handler();
 
     /**
      * 启动evaluator模块

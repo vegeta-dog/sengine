@@ -68,5 +68,8 @@ namespace Kafka_cli
         // 消息处理函数
         void (*handler)(kafka::clients::consumer::ConsumerRecord);
     };
+
+    void do_start_kafka_consumer(const std::string &brokers, const std::string &topic, std::string group_id, void (*handler)(kafka::clients::consumer::ConsumerRecord));
+    void do_start_kafka_producer(const std::string &brokers, const std::string &topic, std::string (*handler)(void));
 };
 #endif

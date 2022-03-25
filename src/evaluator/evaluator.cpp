@@ -23,24 +23,14 @@
 namespace bj = boost::json;
 
 static logging::logger log_evaluator("Evaluator");
-static ThreadSafeQueue::queue<std::string> msg_queue;
+static ThreadSafeQueue::queue<std::string> msg_queue;   // 从爬虫模块收到的信息的队列
 
-static ThreadSafeQueue::queue<std::string> send_queue; // 发送消息的队列
+static ThreadSafeQueue::queue<std::string> send2indexBuilder_queue; // 发送消息到索引构建器的队列
 
 static std::list<boost::thread *> threads;
 static std::list<Evaluator::evaluator *> eva_objs;
 
-static void do_start_kafka_consumer(const std::string &brokers, const std::string &topic, std::string group_id, void (*handler)(kafka::clients::consumer::ConsumerRecord))
-{
-    Kafka_cli::consumer csm(brokers, topic, true, group_id, handler);
-    csm.worker();
-}
 
-static void do_start_kafka_producer(const std::string &brokers, const std::string &topic, std::string (*handler)(void))
-{
-    Kafka_cli::producer pdc(brokers, topic, handler);
-    pdc.worker();
-}
 
 /**
  * 启动evaluator模块
@@ -70,21 +60,24 @@ void Evaluator::run()
 
     // 启动kafka客户端
     configParser::get_config("Kafka.kafka_brokers", &str);
-    t = new boost::thread(&do_start_kafka_consumer, str, "Crawler2Evaluator", "Eva_recv_crawl", &Evaluator::message_handler);
+    t = new boost::thread(&Kafka_cli::do_start_kafka_consumer, str, "Crawler2Evaluator", "Eva_recv_crawl", &Evaluator::message_handler);
+    threads.emplace_back(t);
+    
+    t = new boost::thread(&Kafka_cli::do_start_kafka_producer, str, "Evaluator2indexBuilder", &Evaluator::send_msg2indexBuilder_handler);
     threads.emplace_back(t);
 
     for (auto x = threads.begin(); x != threads.end(); ++x)
         (*x)->join();
 }
 
-std::string Evaluator::send_msg_handler()
+std::string Evaluator::send_msg2indexBuilder_handler()
 {
     while (true)
     {
 
         try
         {
-            return send_queue.getFront();
+            return send2indexBuilder_queue.getFront();
         }
         catch (int e)
         {
@@ -102,6 +95,7 @@ std::string Evaluator::send_msg_handler()
 void Evaluator::do_start(MYSQL *mysql_conn, int mysql_conn_id, redisContext *redis_conn, int redis_conn_id, Database::DataBase *db)
 {
     Evaluator::evaluator eva(mysql_conn, mysql_conn_id, redis_conn, redis_conn_id, db);
+    eva_objs.emplace_back(&eva);
     eva.run();
 }
 
@@ -199,7 +193,8 @@ void Evaluator::evaluator::run()
             
             // 暂时所有网页都收录
             // todo: 评估内容
-            send_queue.push(msg);
+            send2indexBuilder_queue.push(msg);
+            // todo: 将下一步要爬取的链接发回给爬虫模块
         }
         catch (const std::exception &e)
         {
