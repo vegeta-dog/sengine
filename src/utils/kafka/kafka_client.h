@@ -21,9 +21,10 @@ namespace Kafka_cli
     class producer
     {
     public:
-        producer(std::string brokers, std::string topic);
+        producer(std::string brokers, std::string topic, std::string (*handler)(void));
         ~producer();
 
+        void worker();
         /**
          * @brief send message
          * 
@@ -37,6 +38,8 @@ namespace Kafka_cli
         kafka::clients::KafkaProducer *pdc;
         logging::logger *log;
         unsigned int producer_obj_id;
+
+        std::string (*handler)(void);  // 数据拉取函数
     };
 
     class consumer

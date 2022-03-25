@@ -24,6 +24,9 @@ namespace bj = boost::json;
 
 static logging::logger log_evaluator("Evaluator");
 static ThreadSafeQueue::queue<std::string> msg_queue;
+
+static ThreadSafeQueue::queue<std::string> send_queue; // 发送消息的队列
+
 static std::list<boost::thread *> threads;
 static std::list<Evaluator::evaluator *> eva_objs;
 
@@ -32,6 +35,13 @@ static void do_start_kafka_consumer(const std::string &brokers, const std::strin
     Kafka_cli::consumer csm(brokers, topic, true, group_id, handler);
     csm.worker();
 }
+
+static void do_start_kafka_producer(const std::string &brokers, const std::string &topic, std::string (*handler)(void))
+{
+    Kafka_cli::producer pdc(brokers, topic, handler);
+    pdc.worker();
+}
+
 /**
  * 启动evaluator模块
  */
@@ -65,6 +75,25 @@ void Evaluator::run()
 
     for (auto x = threads.begin(); x != threads.end(); ++x)
         (*x)->join();
+}
+
+std::string Evaluator::send_msg_handler()
+{
+    while (true)
+    {
+
+        try
+        {
+            return send_queue.getFront();
+        }
+        catch (int e)
+        {
+            if (e == -1)
+                usleep(100);
+            else
+                std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
+        }
+    }
 }
 /**
  * @brief 真正启动评估器
@@ -133,22 +162,30 @@ void Evaluator::evaluator::run()
     {
         try
         {
-            if (msg_queue.empty())
+
+            // 解析json
+            std::string msg;
+            try
             {
-                // 休眠100ms
-                usleep(100);
+                msg = msg_queue.getFront();
+            }
+            catch (int e)
+            {
+                if (e == -1)
+                    usleep(100);
+                else
+                    std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
                 continue;
             }
 
-            // 解析json
-            std::string msg = msg_queue.getFront();
             bj::value jv = bj::parse(msg);
             auto msg_obj = jv.as_object();
 
             std::string url = bj::value_to<std::string>(msg_obj.at("url"));
             bj::value url_list = msg_obj.at("url_list");
 
-            check_url_in_db(url);
+            if (!check_url_in_db(url))
+                store_weblink2db(url);
 
             auto urls = url_list.as_array();
 
@@ -159,6 +196,10 @@ void Evaluator::evaluator::run()
                 // 将网页上带有的链接存入数据库
                 store_weblink2db(x);
             }
+            
+            // 暂时所有网页都收录
+            // todo: 评估内容
+            send_queue.push(msg);
         }
         catch (const std::exception &e)
         {

@@ -67,11 +67,13 @@ unsigned int Kafka_cli::get_consumer_id()
     return ret;
 }
 
-Kafka_cli::producer::producer(std::string brokers, std::string topic)
+Kafka_cli::producer::producer(std::string brokers, std::string topic, std::string (*handler)(void))
 {
     this->brokers = brokers;
     this->topic = topic;
     this->producer_obj_id = get_producer_id();
+
+    this->handler = handler;
 
     this->log = new logging::logger("producer " + boost::lexical_cast<std::string>(this->producer_obj_id));
 
@@ -89,6 +91,21 @@ Kafka_cli::producer::~producer()
     this->pdc->close();
     free(this->pdc);
     free(this->log);
+}
+
+void Kafka_cli::producer::worker()
+{
+    while (true)
+    {
+        try
+        {
+            this->send(this->handler());
+        }
+        catch (const std::exception &e)
+        {
+            log->error(__LINE__, "An error occurred, Details:" + boost::lexical_cast<std::string>(e.what()));
+        }
+    }
 }
 
 void Kafka_cli::producer::send(const std::string &msg)

@@ -3,14 +3,15 @@
 
 #include <queue>
 #include <mutex>
+#include <stdexcept>
 namespace ThreadSafeQueue
 {
     template <typename T>
     class queue
     {
     public:
-        queue()=default;
-        ~queue()=default;
+        queue() = default;
+        ~queue() = default;
 
         void push(const T &data)
         {
@@ -21,8 +22,8 @@ namespace ThreadSafeQueue
 
         /**
          * @brief 返回队列首部元素
-         * 
-         * @return T 
+         *
+         * @return T
          */
         T front()
         {
@@ -33,7 +34,6 @@ namespace ThreadSafeQueue
             return ret;
         };
 
-
         void pop()
         {
             rwMutex.lock();
@@ -43,26 +43,29 @@ namespace ThreadSafeQueue
 
         /**
          * @brief 返回队首元素并pop
-         * 
+         *
          * @return T 队首元素
          */
         T getFront()
         {
             T ret;
             rwMutex.lock();
+            if (que.empty())
+            {
+                rwMutex.unlock();
+                throw (int)(-1);
+            }
             ret = que.front();
             que.pop();
             rwMutex.unlock();
             return ret;
         }
 
-
-
         /**
          * @brief 返回队列是否为空
-         * 
-         * @return true 
-         * @return false 
+         *
+         * @return true
+         * @return false
          */
         bool empty()
         {

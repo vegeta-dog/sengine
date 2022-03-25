@@ -67,6 +67,13 @@ namespace Evaluator
     void message_handler(kafka::clients::consumer::ConsumerRecord rec);
 
     /**
+     * @brief 向索引构建器发送数据的handler，从queue中读取数据并返回给producer
+     * 
+     * @return std::string 
+     */
+    std::string send_msg_handler();
+
+    /**
      * 启动evaluator模块
      */
     void run();
