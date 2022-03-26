@@ -21,9 +21,10 @@ namespace Kafka_cli
     class producer
     {
     public:
-        producer(std::string brokers, std::string topic);
+        producer(std::string brokers, std::string topic, std::string (*handler)(void));
         ~producer();
 
+        void worker();
         /**
          * @brief send message
          * 
@@ -37,6 +38,8 @@ namespace Kafka_cli
         kafka::clients::KafkaProducer *pdc;
         logging::logger *log;
         unsigned int producer_obj_id;
+
+        std::string (*handler)(void);  // 数据拉取函数
     };
 
     class consumer
@@ -50,12 +53,13 @@ namespace Kafka_cli
          * @param auto_commit auto commit?
          * @param handler 数据上半部处理函数
          */
-        consumer(std::string brokers, std::string topic, bool auto_commit, void (*handler)(kafka::clients::consumer::ConsumerRecord));
+        consumer(std::string brokers, std::string topic, bool auto_commit, std::string group_id, void (*handler)(kafka::clients::consumer::ConsumerRecord));
         ~consumer();
         void worker();
 
     private:
         std::string brokers;
+        std::string group_id;
         kafka::Topic topic;
         kafka::clients::KafkaConsumer *csm;
         logging::logger *log;
@@ -64,5 +68,8 @@ namespace Kafka_cli
         // 消息处理函数
         void (*handler)(kafka::clients::consumer::ConsumerRecord);
     };
+
+    void do_start_kafka_consumer(const std::string &brokers, const std::string &topic, std::string group_id, void (*handler)(kafka::clients::consumer::ConsumerRecord));
+    void do_start_kafka_producer(const std::string &brokers, const std::string &topic, std::string (*handler)(void));
 };
 #endif

@@ -28,17 +28,19 @@ include_directories(/usr/include)
 include_directories(/usr/local/include)
 include_directories(./database)
 include_directories(./evaluator)
-include_directories(./utils)
+include_directories(./indexBuilder)
 include_directories(./libs)
 include_directories(./libs/kafka)
+include_directories(./utils)
 
 link_directories(/usr/lib)
 link_directories(/usr/local/lib)
 
 add_subdirectory(database)
-add_subdirectory(utils)
-add_subdirectory(libs)
 add_subdirectory(evaluator)
+add_subdirectory(indexBuilder)
+add_subdirectory(libs)
+add_subdirectory(utils)
 
 add_link_options( -lrt -lpthread  -lstdc++ -lboost_filesystem)
 
@@ -48,7 +50,7 @@ add_link_options( -lssl -lz -ldl )
 set (CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
 
 set(Boost_USE_STATIC_LIBS   ON)
-FIND_PACKAGE(Boost COMPONENTS system filesystem program_options thread REQUIRED )
+FIND_PACKAGE(Boost COMPONENTS system filesystem program_options thread json REQUIRED )
 if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     MESSAGE( STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}.")
@@ -70,6 +72,9 @@ endif()
 add_executable(sEngine ${DIR_SRCS})
 
 # 引用的开源库
+target_link_libraries(evaluator Boost::json)
+target_link_libraries(indexBuilder Boost::json)
+
 target_link_libraries(sEngine ${Boost_LIBRARIES})
 target_link_libraries(sEngine spdlog::spdlog)
 target_link_libraries(sEngine hiredis)
@@ -81,6 +86,7 @@ target_link_libraries(sEngine database)
 target_link_libraries(sEngine logger)
 target_link_libraries(sEngine configParser)
 target_link_libraries(sEngine evaluator)
+target_link_libraries(sEngine indexBuilder)
 
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

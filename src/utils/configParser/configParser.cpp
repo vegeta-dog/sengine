@@ -39,6 +39,7 @@ static std::pair<std::string, bool> config_req[MAX_CONFIG_NUM] =
                 std::make_pair("DataBase.redis_password", false),
                 std::make_pair("DataBase.redis_pool_max_conn", false),
                 std::make_pair("Kafka.kafka_brokers", true),
+                std::make_pair("Evaluator.evaluator_num", false)
         };
 
 /**
@@ -51,6 +52,7 @@ static std::map<std::string, std::string> config_default_val =
                 {"DataBase.redis_password",      ""},
                 {"DataBase.redis_pool_max_conn", "10"},
                 {"DataBase.mysql_pool_max_conn", "10"},
+                {"Evaluator.evaluator_num", "1"}
 
         };
 
