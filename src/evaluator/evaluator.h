@@ -6,7 +6,7 @@
 #define SENGINE_EVALUATOR_H
 
 #include "../utils/logger/logger.h"
-#include "../utils/kafka/kafka_client.h"
+#include "../utils/kafka-cpp/kafka_client.h"
 #include "../database/DataBase.h"
 #include <mysql/mysql.h>
 #include <hiredis/hiredis.h>

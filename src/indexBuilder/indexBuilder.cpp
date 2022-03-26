@@ -14,6 +14,8 @@ static logging::logger log_evaluator("IndexBuilder");
 static std::list<boost::thread *> threads;
 static std::list<indexBuilder::builder *> builder_objs;
 
+static ThreadSafeQueue::queue<std::string> recv_from_eva_queue;
+
 indexBuilder::builder::builder(Database::DataBase *db)
 {
     this->db = db;
@@ -52,5 +54,34 @@ void indexBuilder::run()
 
 void indexBuilder::message_recv_from_Eva_handler(kafka::clients::consumer::ConsumerRecord rec)
 {
+    recv_from_eva_queue.push(rec.value().toString());
+}
+
+/**
+ * @brief 执行启动索引构建器对象的操作
+ *
+ * @param db 数据库对象
+ */
+void do_start(Database::DataBase *db)
+{
+    indexBuilder::builder bd(db);
+    builder_objs.emplace_back(&bd);
+    bd.run();
+}
+
+void indexBuilder::builder::run()
+{
+    while (true)
+    {
+        try
+        {
+            /* code */
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+        
+    }
     
 }

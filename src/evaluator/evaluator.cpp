@@ -137,7 +137,7 @@ void Evaluator::evaluator::store_weblink2db(const std::string &url)
     {
         // url在数据库中不存在
         char sql[2048];
-        sprintf(sql, "INSERT INTO WebLink(idWebLink, url, Crawl)  VALUES(NULL, '%s', 0)", url.c_str());
+        sprintf(sql, "INSERT INTO WebPage(idWebPage, url, Crawl)  VALUES(NULL, '%s', 0)", url.c_str());
         if (mysql_query(this->mysql_conn, sql))
         {
             log->error(__LINE__, "mysql query failed. Message:" + boost::lexical_cast<std::string>(mysql_error(this->mysql_conn)));
@@ -214,7 +214,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
 {
     std::string key;
     // 先检查是否在redis内
-    key = "weblink:" + url;
+    key = "WebPage:" + url;
     redisReply *reply = (redisReply *)redisCommand(this->redis_conn, ("GET " + key).c_str());
     if (reply != NULL && reply->type == REDIS_REPLY_STATUS)
     {
@@ -230,7 +230,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     // redis中不存在，查库
 
     std::string sql;
-    sql = "SELECT Crawl, UpdatedDateTime FROM WebLink WHERE url='" + url + "';";
+    sql = "SELECT Crawl, UpdatedDateTime FROM WebPage WHERE url='" + url + "';";
     if (mysql_query(this->mysql_conn, sql.c_str()))
     {
         log->error(__LINE__, "mysql query failed.");
@@ -258,7 +258,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     if (_updatedTime == "")
         return false;
 
-    key = "weblink:" + url;
+    key = "WebPage:" + url;
     reply = (redisReply *)redisCommand(this->redis_conn, ("SET " + key + " 1").c_str());
     if (reply == NULL)
     {
@@ -269,7 +269,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     reply = (redisReply *)redisCommand(this->redis_conn, ("EXPIRE " + key + " 86400").c_str());
     freeReplyObject(reply);
 
-    key = " weblink:" + url + ":UpdatedDateTime ";
+    key = " WebPage:" + url + ":UpdatedDateTime ";
     reply = (redisReply *)redisCommand(this->redis_conn, ("SET" + key + _updatedTime).c_str());
     if (reply == NULL)
     {
@@ -280,7 +280,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     reply = (redisReply *)redisCommand(this->redis_conn, ("EXPIRE " + key + " 86400").c_str());
     freeReplyObject(reply);
 
-    key = " weblink:" + url + ":Crawl ";
+    key = " WebPage:" + url + ":Crawl ";
     reply = (redisReply *)redisCommand(this->redis_conn, ("SET" + key + boost::lexical_cast<std::string>(int(_crawl))).c_str());
     if (reply == NULL)
     {
