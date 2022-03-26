@@ -2,12 +2,14 @@
 
 #include "../utils/configParser/configParser.h"
 #include "../utils/queue/queue.h"
-#include "../utils/kafka/kafka_client.h"
+#include "../utils/kafka-cpp/kafka_client.h"
 
 #include <boost/lockfree/queue.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <boost/json.hpp>
+
+namespace bj = boost::json;
 
 static logging::logger log_evaluator("IndexBuilder");
 
@@ -75,13 +77,67 @@ void indexBuilder::builder::run()
     {
         try
         {
-            /* code */
+            // 解析json
+            std::string msg;
+            try
+            {
+                msg = recv_from_eva_queue.getFront();
+            }
+            catch (int e)
+            {
+                if (e == -1)
+                    usleep(100);
+                else
+                    std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
+                continue;
+            }
+
+            bj::value jv = bj::parse(msg);
+            boost::json::object msg_obj = jv.as_object();
+
+            std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> inv_map;
+            // 为当前网页创建倒排列表
+            preprocess(inv_map, msg_obj);
+
+            // 异步io，分批次读取磁盘上的倒排列表到内存中，并进行合并
+
+            
+
         }
-        catch(const std::exception& e)
+        catch (const std::exception &e)
         {
             std::cerr << e.what() << '\n';
         }
-        
     }
-    
+}
+
+/**
+ * @brief 预处理网页，为每个网页构建倒排列表
+ *
+ * @param inv_map 返回的倒排列表对象的映射
+ * @param msg_obj 消息json对象指针
+ */
+void indexBuilder::preprocess(std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> &inv_map, boost::json::object &msg_obj)
+{
+    boost::json::array arr[2];
+    boost::json::array arr[0] = msg_obj.at("title").as_array();
+    boost::json::array arr[1] = msg_obj.at("content").as_array();
+
+    unsigned int id = msg_obj.at("id").as_uint64();
+
+    unsigned int offset = 0;
+    for (const auto &ar : arr)
+        for (boost::json::value item : ar)
+        {
+            std::string str = bj::value_to<std::string>(item);
+
+            if (!inv_map.count(str)) // 当前网页还没有统计过这个key，创建倒排列表
+            {
+                inv_map[str] = indexBuilder::InvertedIndex::InvertedIndex_List(str);
+            }
+
+            inv_map[str].list.emplace_back(indexBuilder::InvertedIndex::list_node(id, offset));
+
+            offset += str.length();
+        }
 }
