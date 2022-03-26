@@ -48,7 +48,23 @@ namespace Evaluator
          */
         bool check_url_in_db(const std::string &url);
 
-        void store_weblink2db(const std::string &url);
+        /**
+         * @brief 将网页链接存入数据库
+         *  若网页链接不在数据库中，则存入数据库，否则直接返回链接的id
+         * @param url
+         * @return 主键ID
+         */
+        int store_weblink2db(const std::string &url);
+
+        /**
+         * @brief 创建网页指向关系记录
+         *
+         * @param from  来源网页的id
+         * @param to 被指向的网页的id
+         * @return true 成功创建
+         * @return false 创建失败
+         */
+        bool create_LinkRecord(unsigned int from, unsigned int to);
 
         MYSQL *mysql_conn;
         redisContext *redis_conn;
@@ -69,8 +85,8 @@ namespace Evaluator
 
     /**
      * @brief 向索引构建器发送数据的handler，从queue中读取数据并返回给producer
-     * 
-     * @return std::string 
+     *
+     * @return std::string
      */
     std::string send_msg2indexBuilder_handler();
 
