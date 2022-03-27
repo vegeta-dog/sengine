@@ -30,7 +30,6 @@ include_directories(./database)
 include_directories(./evaluator)
 include_directories(./indexBuilder)
 include_directories(./libs)
-include_directories(./libs/kafka)
 include_directories(./utils)
 
 link_directories(/usr/lib)
@@ -74,6 +73,7 @@ add_executable(sEngine ${DIR_SRCS})
 # 引用的开源库
 target_link_libraries(evaluator Boost::json)
 target_link_libraries(indexBuilder Boost::json)
+target_link_libraries(indexBuilder bundle)
 
 target_link_libraries(sEngine ${Boost_LIBRARIES})
 target_link_libraries(sEngine spdlog::spdlog)
