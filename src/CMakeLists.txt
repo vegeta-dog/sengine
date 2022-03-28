@@ -30,6 +30,7 @@ include_directories(./database)
 include_directories(./evaluator)
 include_directories(./indexBuilder)
 include_directories(./libs)
+include_directories(./searcher)
 include_directories(./utils)
 
 link_directories(/usr/lib)
@@ -39,6 +40,7 @@ add_subdirectory(database)
 add_subdirectory(evaluator)
 add_subdirectory(indexBuilder)
 add_subdirectory(libs)
+add_subdirectory(searcher)
 add_subdirectory(utils)
 
 add_link_options( -lrt -lpthread  -lstdc++ -lboost_filesystem)
@@ -87,6 +89,7 @@ target_link_libraries(sEngine logger)
 target_link_libraries(sEngine configParser)
 target_link_libraries(sEngine evaluator)
 target_link_libraries(sEngine indexBuilder)
+target_link_libraries(sEngine searcher)
 
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
