@@ -51,10 +51,11 @@ namespace Evaluator
         /**
          * @brief 将网页链接存入数据库
          *  若网页链接不在数据库中，则存入数据库，否则直接返回链接的id
-         * @param url
+         * @param url 网址
+         * @param crawl 网址是否已经被爬取
          * @return 主键ID
          */
-        int store_weblink2db(const std::string &url);
+        int store_weblink2db(const std::string &url, unsigned int crawl);
 
         /**
          * @brief 创建网页指向关系记录

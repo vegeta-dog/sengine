@@ -225,14 +225,14 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
  * @param url
  * @return 主键ID
  */
-int Evaluator::evaluator::store_weblink2db(const std::string &url)
+int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int crawl)
 {
     int ret = 0;
     if (!Evaluator::evaluator::check_url_in_db(url))
     {
         // url在数据库中不存在
         char sql[2048];
-        sprintf(sql, "INSERT INTO WebPage(idWebPage, url, Crawl)  VALUES(NULL, '%s', 0)", url.c_str());
+        sprintf(sql, "INSERT INTO WebPage(idWebPage, url, Crawl)  VALUES(NULL, '%s', %d)", url.c_str(), crawl);
         mysql_autocommit(this->mysql_conn, OFF);
         try
         {
@@ -336,7 +336,7 @@ void Evaluator::evaluator::run()
             std::string url = bj::value_to<std::string>(msg_obj.at("url"));
             bj::value url_list = msg_obj.at("url_list");
 
-            int from_page_id = store_weblink2db(url);
+            int from_page_id = store_weblink2db(url, 1);
 
             auto urls = url_list.as_array();
             int to_page_id;
@@ -344,11 +344,24 @@ void Evaluator::evaluator::run()
             {
                 std::string x = bj::value_to<std::string>(u);
                 // 将网页上带有的链接存入数据库
-                to_page_id = store_weblink2db(x);
+                to_page_id = store_weblink2db(x, 0);
                 // 创建weblink
-
                 create_LinkRecord(from_page_id, to_page_id);
             }
+            // 填写count_total_link_to
+            std::string sql = "UPDATE WebPage SET count_total_link_to=" + boost::lexical_cast<std::string>(urls.size()) + " WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
+            mysql_autocommit(this->mysql_conn, OFF);
+
+            if (mysql_query(this->mysql_conn, sql.c_str()))
+            {
+                this->log->error(__LINE__, "mysql query failed.");
+                mysql_rollback(this->mysql_conn);
+                mysql_autocommit(this->mysql_conn, ON);
+                throw "mysql query failed.";
+            }
+            mysql_commit(this->mysql_conn);
+
+            mysql_autocommit(this->mysql_conn, ON);
 
             // 暂时所有网页都收录
             // todo: 评估内容
@@ -358,8 +371,8 @@ void Evaluator::evaluator::run()
             to_index_builder["content"] = msg_obj.at("content");
 
             send2indexBuilder_queue.push(boost::json::serialize(to_index_builder));
+
             // todo: 将下一步要爬取的链接发回给爬虫模块
-            
         }
         catch (const std::exception &e)
         {
@@ -411,6 +424,7 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from, unsigned int to)
     if (mysql_query(this->mysql_conn, sql))
     {
         log->error(__LINE__, "Failed to create LinkRecord. Message:" + boost::lexical_cast<std::string>(mysql_error(this->mysql_conn)));
+        mysql_rollback(this->mysql_conn);
         mysql_autocommit(this->mysql_conn, ON);
         return false;
     }
