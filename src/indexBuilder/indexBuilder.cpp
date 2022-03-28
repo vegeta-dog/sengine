@@ -33,10 +33,13 @@ static std::string get_inv_index_path(const std::string &key, logging::logger *l
 indexBuilder::builder::builder(Database::DataBase *db)
 {
     this->db = db;
+    this->builder_id = indexBuilder::get_indexBuilder_id();
+    this->log = new logging::logger("indexBuilder " + boost::lexical_cast<std::string>(this->builder_id));
 }
 
 indexBuilder::builder::~builder()
 {
+    free(this->log);
 }
 
 void indexBuilder::run()
@@ -111,8 +114,6 @@ void indexBuilder::builder::run()
             // 为当前网页创建倒排列表
             preprocess(inv_map, msg_obj);
 
-
-
             unsigned int page_id = msg_obj.at("id").as_uint64();
             int tmp_conn_id;
             MYSQL *tmp_conn;
@@ -125,7 +126,7 @@ void indexBuilder::builder::run()
             {
                 tmp_conn = this->db->mysql_conn_pool->get_conn(tmp_conn_id);
 
-                t = new boost::thread(&worker, page_id, x.first, get_inv_index_path(x.first, this->log, tmp_conn), x.second, this->db, this->log);
+                t = new boost::thread(&worker, msg_obj, page_id, x.first, get_inv_index_path(x.first, this->log, tmp_conn), x.second, this->db, this->log);
                 this->db->mysql_conn_pool->free_conn(tmp_conn_id);
                 work_threads.emplace_back(t);
 
@@ -147,12 +148,10 @@ void indexBuilder::builder::run()
             for (auto tt : work_threads)
                 free(tt);
             work_threads.clear();
-
-            
         }
         catch (const std::exception &e)
         {
-            std::cerr << e.what() << '\n';
+            this->log->error(__LINE__, boost::lexical_cast<std::string>(e.what()));
         }
     }
 }
@@ -183,6 +182,7 @@ void indexBuilder::preprocess(std::map<std::string, indexBuilder::InvertedIndex:
             {
                 keys.emplace_back(str);
                 inv_map[str] = indexBuilder::InvertedIndex::InvertedIndex_List(str);
+                inv_map[str].page_set.insert(id);
             }
 
             inv_map[str].list.emplace_back(indexBuilder::InvertedIndex::list_node(id, offset));
@@ -207,8 +207,10 @@ void indexBuilder::preprocess(std::map<std::string, indexBuilder::InvertedIndex:
  * @param path 已经存在的索引文件的路径（若为-1，则创建新的索引）
  * @param pre_proc_list 当前关键字预处理的倒排列表
  */
-void indexBuilder::worker(unsigned int id, std::string key, std::string path, indexBuilder::InvertedIndex::InvertedIndex_List &pre_proc_list, Database::DataBase *db, logging::logger *log)
+void indexBuilder::worker(bj::object &msg_obj, unsigned int id, std::string key, std::string path, indexBuilder::InvertedIndex::InvertedIndex_List &pre_proc_list, Database::DataBase *db, logging::logger *log)
 {
+    int mysql_id;
+    MYSQL *mysql_conn = NULL;
 
     if (path != "-1")
     {
@@ -217,6 +219,7 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
         std::ifstream fin(path, std::ios::in);
         boost::archive::binary_iarchive ia(fin);
         ia >> existsed_list;
+        fin.close();
 
         // 先清空属于该网页的倒排索引
         for (auto it = existsed_list.list.begin(); it != existsed_list.list.end();)
@@ -226,6 +229,8 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
             else
                 ++it;
         }
+        if (existsed_list.page_set.count(id))
+            existsed_list.page_set.erase(id);
 
         // 合并索引
         auto it_pre = pre_proc_list.list.begin();
@@ -244,6 +249,8 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
             ++it_pre;
         }
 
+        existsed_list.page_set.insert(id);
+
         // 创建新的倒排索引文件
         std::string opath = gen_invIndex_filepath(id);
         std::ofstream fout(opath, std::ios::out);
@@ -253,8 +260,6 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
 
         // 在mysql中更新值
         std::string sql = "UPDATE InvertedIndexTable SET path='" + opath + "'WHERE key='" + key + "';";
-        int mysql_id;
-        MYSQL *mysql_conn = NULL;
         while (true)
         {
             mysql_conn = db->mysql_conn_pool->get_conn(mysql_id);
@@ -264,13 +269,15 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
                 usleep(100); // 获取不到mysql conn， 100ms后重试
         }
 
+        mysql_autocommit(mysql_conn, OFF);
         if (mysql_query(mysql_conn, sql.c_str()))
         {
             log->error(__LINE__, "mysql query failed.");
+            mysql_rollback(mysql_conn);
+            mysql_autocommit(mysql_conn, ON);
+            db->mysql_conn_pool->free_conn(mysql_id);
             return;
         }
-
-        db->mysql_conn_pool->free_conn(mysql_id);
     }
     else // 之前不存在这个key的倒排索引
     {
@@ -283,8 +290,7 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
 
         // 在mysql中更新值
         std::string sql = "INSERT INTO InvertedIndexTable(key, path) VALUES('" + key + "', '" + opath + "');";
-        int mysql_id;
-        MYSQL *mysql_conn = NULL;
+
         while (true)
         {
             mysql_conn = db->mysql_conn_pool->get_conn(mysql_id);
@@ -297,11 +303,30 @@ void indexBuilder::worker(unsigned int id, std::string key, std::string path, in
         if (mysql_query(mysql_conn, sql.c_str()))
         {
             log->error(__LINE__, "mysql query failed.");
+            db->mysql_conn_pool->free_conn(mysql_id);
             return;
         }
 
-        db->mysql_conn_pool->free_conn(mysql_id);
+        // db->mysql_conn_pool->free_conn(mysql_id);
     }
+
+    // 填写完全WebPage表
+    std::string document = "", title = "";
+    bj::array document_arr = msg_obj.at("content").as_array();
+    bj::array title_arr = msg_obj.at("title").as_array();
+
+    // 获取document的全部内容
+    for (auto &x : document_arr)
+        document += (bj::value_to<std::string>(x));
+
+    // 获取title字符串
+    for (auto &x : title_arr)
+        title += (bj::value_to<std::string>(x));
+
+    std::string sql = "UPDATE WebPage SET document='" + document + "', title='" + title + "' WHERE idWebPage=" + boost::lexical_cast<std::string>(id) + ";";
+    mysql_commit(mysql_conn);
+    mysql_autocommit(mysql_conn, ON);
+    db->mysql_conn_pool->free_conn(mysql_id);
 
     // todo: 定时删除过期的倒排索引
 }
@@ -349,4 +374,15 @@ std::string indexBuilder::gen_invIndex_filepath(const int &id)
     time_t t;
     time(&t);
     return indexBuilder::invIndex_file_base_path + boost::lexical_cast<std::string>(id) + '_' + boost::lexical_cast<std::string>(t) + ".inv_idx";
+}
+
+unsigned int indexBuilder::get_indexBuilder_id()
+{
+    unsigned int ret;
+    mtx_indexBuilder_id.lock();
+
+    ret = max_indexBuilder_id++;
+
+    mtx_indexBuilder_id.unlock();
+    return ret;
 }

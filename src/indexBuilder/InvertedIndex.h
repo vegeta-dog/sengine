@@ -2,9 +2,12 @@
 
 #include <string>
 #include <vector>
+#include<set>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/list.hpp>
+#include <boost/serialization/set.hpp>
+#include<boost/serialization/vector.hpp>
 
 namespace indexBuilder::InvertedIndex
 {
@@ -46,13 +49,14 @@ namespace indexBuilder::InvertedIndex
         std::string key;
         // 倒排列表的 list
         std::vector<indexBuilder::InvertedIndex::list_node> list;
-
+        std::set<unsigned int> page_set;
         // 声明用于序列化的模板函数
         template <class Archive>
         void serialize(Archive &ar, const unsigned int version)
         {
             ar &key;
             ar &list;
+            ar &page_set;
         }
 
     private:

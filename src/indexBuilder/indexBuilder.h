@@ -18,6 +18,10 @@ namespace indexBuilder
 {
     // 倒排索引文件的base路径
     const std::string invIndex_file_base_path = "./data/invIndex/"; // 注意，这里结尾需要有 / 符号
+
+    static std::mutex mtx_indexBuilder_id;
+    static unsigned int max_indexBuilder_id = 0;
+
     class builder
     {
     public:
@@ -29,6 +33,8 @@ namespace indexBuilder
     private:
         Database::DataBase *db;
         logging::logger *log;
+
+        unsigned int builder_id;
     };
 
     /**
@@ -39,7 +45,7 @@ namespace indexBuilder
      * @param path 已经存在的索引文件的路径（若为-1，则创建新的索引）
      * @param pre_proc_list 当前关键字预处理的倒排列表
      */
-    void worker(unsigned int id, std::string key, std::string path, indexBuilder::InvertedIndex::InvertedIndex_List &pre_proc_list, Database::DataBase *db, logging::logger *log);
+    void worker(boost::json::object &msg_obj, unsigned int id, std::string key, std::string path, indexBuilder::InvertedIndex::InvertedIndex_List &pre_proc_list, Database::DataBase *db, logging::logger *log);
 
     /**
      * @brief 启动索引构建器模块
@@ -75,4 +81,6 @@ namespace indexBuilder
      * @return std::string 生成的路径
      */
     std::string gen_invIndex_filepath(const int &id);
+
+    unsigned int get_indexBuilder_id();
 }
