@@ -62,7 +62,7 @@ Database::DataBase::DataBase() {
     int errcode = 0;
 
     // 初始化MySQL连接池
-    this->mysql_conn_pool = new ::DataBase::MysqlPool::mysql_pool();
+    this->mysql_conn_pool = new Database::MysqlPool::mysql_pool();
     errcode = this->mysql_conn_pool->init(this->mysql_host, this->mysql_port, this->mysql_max_conn_num,
                                           this->mysql_username,
                                           this->mysql_password, this->mysql_database_name);
@@ -75,7 +75,7 @@ Database::DataBase::DataBase() {
     /**
      * 初始化redis连接池
      */
-    this->redis_conn_pool = new ::DataBase::RedisPool::redis_pool();
+    this->redis_conn_pool = new Database::RedisPool::redis_pool();
 
     errcode = this->redis_conn_pool->init(this->redis_host, boost::lexical_cast<int>(this->redis_port),
                                           boost::lexical_cast<int>(this->redis_max_conn_num), this->redis_password);
