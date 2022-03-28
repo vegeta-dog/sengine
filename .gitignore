@@ -38,3 +38,5 @@ cmake-build-debug/
 /build/
 /.vscode/
 /.idea/
+/src/crawler/config.ini
+/src/config.ini
