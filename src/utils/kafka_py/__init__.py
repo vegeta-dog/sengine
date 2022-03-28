@@ -1,0 +1,1 @@
+print("import kafka_py.init")
