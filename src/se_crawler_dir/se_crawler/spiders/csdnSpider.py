@@ -39,7 +39,7 @@ class CsdnSpider(scrapy.Spider):
         # 获取内容 list
         h_list = extract_selector(content_selector.xpath(".//*[starts-with(name(), 'h')]"))  # 输出所有的 h 标签
         # 获取 href 获取所有 blog+csdn域名开头+自动去重 的 url
-        href_list = response.xpath(f"//*[@href]/@href[contains(., 'article') and constains(., '{allowed_domain}')]").getall()
+        href_list = response.xpath(f"//*[@href]/@href[contains(., 'article') and contains(., '{allowed_domain}')]").getall()
         # 获取 title
         title = response.xpath("/html/head/title/text()").getall()
         # 获取文章的主要内容

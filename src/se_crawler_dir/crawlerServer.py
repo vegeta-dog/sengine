@@ -6,15 +6,20 @@ sys.path.append("../..")
 sys.path.append("..")
 sys.path.append("../se_crawler_dir")
 import scrapy
-from se_crawler.spiders import csdnSpider as csdn
-from se_crawler.spiders import cnblogSpider as cnblog
+import multiprocessing
+
 from twisted.internet import reactor
 from scrapy.crawler import CrawlerRunner
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
-from utils.kafka_py import client
+
+from se_crawler.spiders import csdnSpider as csdn
+from se_crawler.spiders import cnblogSpider as cnblog
 from se_crawler import pipelines as pipe
-import multiprocessing
+
+from utils.kafka_py import client
+
+
 
 
 # 注册好每个爬虫的合法域名
@@ -52,13 +57,13 @@ def url_sender(message):
     print("now url sended!")
     for i, domain in enumerate(domain_list):
         try:
-            strs = message.value['url'].split(":")[1][2:]
+            strs = message['url'].split(":")[1][2:]
             print("strs = ", strs)
             if strs.startswith(domain):
-                que_list[i].put(message.value['url'])
-                print("find !!!", message.value['url'])
+                que_list[i].put(message['url'])
+                print("find !!!", message['url'])
                 break  # 找到一个爬虫愿意接收这个网页即可
-        except AssertionError as e: # 上面的操作有可能数组越界,但是不影响
+        except AssertionError as e:     # 上面的操作有可能数组越界,但是不影响
             print(e, "but doesnt matter.")
             break
 
@@ -68,7 +73,7 @@ class CrawlerServer(multiprocessing.Process):
         super(CrawlerServer, self).__init__()
         import os
         print(os.getcwd())
-        os.chdir(os.path.join(os.path.dirname(__file__),'se_crawler'))
+        os.chdir(os.path.join(os.path.dirname(__file__), 'se_crawler'))
         print(os.getcwd())
         print(os.getcwd())
 
