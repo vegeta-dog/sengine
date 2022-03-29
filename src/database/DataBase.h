@@ -23,8 +23,8 @@ namespace Database {
 
         ~DataBase();
 
-        ::DataBase::RedisPool::redis_pool *redis_conn_pool;
-        ::DataBase::MysqlPool::mysql_pool *mysql_conn_pool;
+        Database::RedisPool::redis_pool *redis_conn_pool;
+        Database::MysqlPool::mysql_pool *mysql_conn_pool;
     private:
         std::string mysql_host;
         int mysql_port;

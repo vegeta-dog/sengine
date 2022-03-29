@@ -16,7 +16,7 @@
 #define E_redis_pool_CONN_CANNOT_ESTABLISH 3
 #define E_redis_pool_PASSWORD_INCORRECT 4
 
-namespace DataBase::RedisPool {
+namespace Database::RedisPool {
     /**
      * redis conn连接池
      * 由于hiRedis不是线程安全的，因此需要线程池

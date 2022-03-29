@@ -15,7 +15,7 @@
 #define E_mysql_pool_CONN_FLAG_NULL 2
 #define E_mysql_pool_CONN_CANNOT_ESTABLISH 3
 
-namespace DataBase::MysqlPool {
+namespace Database::MysqlPool {
     /**
  * mysql conn连接池
  */

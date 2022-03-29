@@ -39,7 +39,9 @@ static std::pair<std::string, bool> config_req[MAX_CONFIG_NUM] =
                 std::make_pair("DataBase.redis_password", false),
                 std::make_pair("DataBase.redis_pool_max_conn", false),
                 std::make_pair("Kafka.kafka_brokers", true),
-                std::make_pair("Evaluator.evaluator_num", false)
+                std::make_pair("Evaluator.evaluator_num", false),
+                std::make_pair("Searcher.Searcher_num", false)
+
         };
 
 /**
@@ -52,7 +54,8 @@ static std::map<std::string, std::string> config_default_val =
                 {"DataBase.redis_password",      ""},
                 {"DataBase.redis_pool_max_conn", "10"},
                 {"DataBase.mysql_pool_max_conn", "10"},
-                {"Evaluator.evaluator_num", "1"}
+                {"Evaluator.evaluator_num", "1"},
+                {"Searcher.Searcher_num", "1"}
 
         };
 
@@ -135,7 +138,7 @@ int configParser::check_config_integrity() {
                 log_configParser.error(__LINE__, buf);
                 exit(0);
             } else {
-                sprintf(buf, "Config key:%s is empty, use default value： %s", req->first.c_str(),
+                sprintf(buf, "Config key:%s is empty, use default value: %s", req->first.c_str(),
                         config_default_val[req->first].c_str());
                 log_configParser.warn(__LINE__, buf);
                 // 设置默认值
