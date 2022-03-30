@@ -17,6 +17,9 @@ message_que = queue.Queue()  # 爬虫与分词模块之间的消息队列
 
 class SeCrawlerPipeline:
     # 规定了所有的item都是一个 (url, title_list, content_list, url_list, datetime)
+    def open_spider(self, spider):
+        print("open spider", spider.name)
+
     def process_item(self, item, spider):
         print("pipeline !!!")
 
@@ -31,3 +34,6 @@ class SeCrawlerPipeline:
         message['datetime'] = item['datetime']
         message_que.put(message, block=True)
         return item
+
+    def close_spider(self, spider):
+        print("end spider", spider.name)

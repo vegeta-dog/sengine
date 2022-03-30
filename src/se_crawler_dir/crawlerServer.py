@@ -54,17 +54,17 @@ def start_crawlers():
 
 def url_sender(message):
     global domain_list
-    print("now url sended!")
+
     for i, domain in enumerate(domain_list):
         try:
             strs = message['url'].split(":")[1][2:]
             print("strs = ", strs)
             if strs.startswith(domain):
-                que_list[i].put(message['url'])
-                print("find !!!", message['url'])
+                print("url sender: find csdn url! now send to csdn_que.")
+                csdn.que.put(message['url'], block=True)
                 break  # 找到一个爬虫愿意接收这个网页即可
-        except AssertionError as e:     # 上面的操作有可能数组越界,但是不影响
-            print(e, "but doesnt matter.")
+        except TypeError as e:     # 上面的操作有可能数组越界,但是不影响
+            print(e, "but doesn't matter.")
             break
 
 
@@ -79,7 +79,7 @@ class CrawlerServer(multiprocessing.Process):
 
     def run(self) -> None:
         pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que)
-        url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID, handler=url_sender)
+        url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender)
         url_consumer.start()
         pip_producer.start()
         # 启动爬虫

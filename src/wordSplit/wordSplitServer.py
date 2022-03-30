@@ -22,15 +22,13 @@ def http_handler(message):
 
 
 def crawl_handler(message):
-    print("!! recevied !!!")
+
     message['title_list'] = wordSplit.exact_wordcut(message['title_list'])
-    print("cur 1")
     message['content_list'] = wordSplit.exact_wordcut(message['content_list'])
-    print("cut 2")
+
     for url in message['url_list']:
         print("send url to que")
-        tmp = dict()
-        tmp['url'] = url
+        tmp = {"url": url}
         to_eva_que.put(tmp, block=True)  # 传入评估器队列
         print("send ok!")
     print("send all!")
@@ -41,12 +39,10 @@ class WordSplitServer(multiprocessing.Process):
         super(WordSplitServer, self).__init__()
 
     def run(self) -> None:
-        print("run run !!")
-
         logging.basicConfig(level=logging.WARNING)
         wordSplit.jieba_init()
         http_receiver = client.Consumer(topics=[client.API_Topic], groupid=client.Group_ID, handler=http_handler)
-        crawl_receiver = client.Consumer(topics=[client.Pipe_Topic], groupid=client.Group_ID, handler=crawl_handler)
+        crawl_receiver = client.Consumer(topics=[client.Pipe_Topic], groupid=client.Group_ID_3, handler=crawl_handler)
         to_index_producer = client.Producer(topic=client.Index_Topic, message_que=to_index_que)
         to_eva_producer = client.Producer(topic=client.URL_Topic, message_que=to_eva_que)  # 最后需要把URLTopic改称eva_Topic
         # 启动

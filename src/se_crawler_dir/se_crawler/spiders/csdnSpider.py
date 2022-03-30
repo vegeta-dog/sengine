@@ -1,5 +1,4 @@
-import sys
-import json, time, queue
+import sys, json, time, queue
 import datetime
 import requests
 import scrapy
@@ -9,8 +8,8 @@ from jieba.analyse import textrank
 from scrapy.selector import Selector
 from se_crawler import items
 
-que = queue.Queue() # csdn 上面的 url
-allowed_domain = 'blog.csdn.net' # 域名限制
+que = queue.Queue()  # csdn 上面的 url
+allowed_domain = 'blog.csdn.net'  # 域名限制
 
 
 class CsdnSpider(scrapy.Spider):
@@ -25,6 +24,7 @@ class CsdnSpider(scrapy.Spider):
     def parse(self, response, **kwargs):
         global que, allowed_domain
         print("parser")
+
         def extract_selector(selectors):
             contents = []
             for selector in selectors:
@@ -39,11 +39,11 @@ class CsdnSpider(scrapy.Spider):
         # 获取内容 list
         h_list = extract_selector(content_selector.xpath(".//*[starts-with(name(), 'h')]"))  # 输出所有的 h 标签
         # 获取 href 获取所有 blog+csdn域名开头+自动去重 的 url
-        href_list = response.xpath(f"//*[@href]/@href[contains(., 'article') and contains(., '{allowed_domain}')]").getall()
+        href_list = response.\
+            xpath(f"//*[@href]/@href[contains(., 'article') and contains(., '{allowed_domain}')]").getall()
         # 获取 title
         title = response.xpath("/html/head/title/text()").getall()
         # 获取文章的主要内容
-        # content_selector = Selector(text="<div>aaaaa<a>bbbb</a>aaaa</div>")
         main_content = content_selector.xpath("./*[name()!='pre']").xpath("string(.)").getall()
 
         print(response.url)
@@ -59,8 +59,13 @@ class CsdnSpider(scrapy.Spider):
 
         # 等待 url
         while True:
-            url = que.get(block=True)
-            yield Request(url, callback=self.parse)
+            if que.qsize() > 0:
+                url = que.get(block=True)
+                # url = "https://blog.csdn.net/WhereIsHeroFrom/article/details/123836614"
+                yield Request(url, callback=self.parse)
+            else:
+                print("crawler doesn't find url from the que")
+            time.sleep(1)
 
 
 

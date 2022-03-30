@@ -4,6 +4,7 @@ from kafka.consumer import KafkaConsumer
 from kafka.producer import KafkaProducer
 import threading
 
+server_host = ""
 
 Pipe_Topic = "a"     # 爬虫与分词模块的通信topic
 WordSplit_Topic = "b"    # 暂未使用
@@ -13,6 +14,8 @@ URL_Topic = "e"  # 评估器与爬虫之间的topic
 Index_Topic = "f"    # 检索模块与分词模块的topic
 
 Group_ID = "GPID"    # ?
+Group_ID_2 = "GPID2"
+Group_ID_3 = "GPID3"
 
 
 class Producer(threading.Thread):
@@ -21,6 +24,7 @@ class Producer(threading.Thread):
             message = self.message_que.get(block=True)
             if type(message) == type(str):
                 print('producer: is not a dict')
+            print("producer's topic :", self.topic, " | send message:", message)
             future = self.producer.send(self.topic, value=json.dumps(message).encode(), partition=0)
             try:
                 future.get(timeout=10)
@@ -28,7 +32,7 @@ class Producer(threading.Thread):
                 print(e)
                 traceback.format_exc()
         
-    def __init__(self, topic, message_que, broker=''):
+    def __init__(self, topic, message_que, broker=server_host):
         super(Producer, self).__init__()
         self.producer = KafkaProducer(
             bootstrap_servers=[broker],
@@ -41,13 +45,15 @@ class Producer(threading.Thread):
         
 class Consumer(threading.Thread):
     def run(self):
+        print("consumer run begin")
         for message in self.consumer:
-            print("self id = ", self.group_id)
             if type(json.loads(message.value.decode())) is not type(dict()):
                 print('consumer: not a dict')
+            print("consumer's topic", self.group_id, "| message:", json.loads(message.value.decode()))
             self.handler(json.loads(message.value.decode()))
+        print("cinsumer run over")
 
-    def __init__(self, topics, groupid, handler, auto_offset_reset='latest', broker=''):
+    def __init__(self, topics, groupid, handler, auto_offset_reset='latest', broker=server_host):
         super(Consumer, self).__init__()
         self.consumer = KafkaConsumer(
             bootstrap_servers=broker,
