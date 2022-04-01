@@ -151,17 +151,19 @@ void Searcher::searcher::run()
                 }
             }
 
-            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its; // inv_node_map中，每个key的倒排结点列表的当前搜索页面的base iterator（指向该页面的第一个node）
+            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its;     // inv_node_map中，每个key的倒排结点列表的当前搜索页面的base iterator（指向该页面的第一个node）
+            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its_end; // inv_node_map中，每个key的倒排结点列表的end迭代器
             for (unsigned int i = 0; i < key_arr_size; ++i)
             {
                 its.emplace_back(inv_node_map[bj::value_to<std::string>(key_arr[i])]->begin());
+                its_end.emplace_back(inv_node_map[bj::value_to<std::string>(key_arr[i])]->end());
             }
 
             std::set<unsigned int> result_page_id_set;
             // ========= 暴力搜索，查询是否存在按顺序的关键词关系 =====
             for (const auto &pid : working_set[set_flag])
             {
-                if (this->dfs_check_relationship(0, key_arr_size, pid, (*its[0])->offset, 3, inv_node_map, its))
+                if (this->dfs_check_relationship(0, key_arr_size, pid, (*its[0])->offset, 3, inv_node_map, its, its_end))
                 {
                     // 当前网页能够被加入结果集
                     result_page_id_set.insert(pid);
@@ -182,7 +184,7 @@ void Searcher::searcher::run()
             }
 
             // 输出结果
-            this->output_result(bj::value_to<std::string>(msg_obj.at("raw")), result_page_id_set);
+            this->output_result(msg_obj.at("id").as_int64(), result_page_id_set);
         }
         catch (const std::exception &e)
         {
@@ -244,15 +246,78 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
 /**
  * @brief 输出检索结果到redis
  *
- * @param raw_user_input 用户原始输入的字符串
+ * @param req_id 用户请求的id
  * @param res_pid_set 最终文章的结果集
  */
-void Searcher::searcher::output_result(const std::string &raw_user_input, std::set<unsigned int> &res_pid_set)
+void Searcher::searcher::output_result(const unsigned int &req_id, std::set<unsigned int> &res_pid_set)
 {
-    int conn_id;
-    redisContext *redis_conn = this->db->redis_conn_pool->get_conn(conn_id);
+    int redis_conn_id;
+    redisContext *redis_conn = this->db->redis_conn_pool->get_conn(redis_conn_id);
 
+    int mysql_conn_id;
+    MYSQL *mysql_conn = this->db->mysql_conn_pool->get_conn(mysql_conn_id);
+
+    // 从mysql中查询数据
     // todo: 输出检索结果
+    // 内容摘要截取文章前140个字
+    std::string base_sql = "SELECT LEFT(document,140),  title, url FROM WebPage WHERE idWebPage=";
+
+    MYSQL_RES *res;
+
+    res = mysql_store_result(mysql_conn);
+
+    MYSQL_ROW column;
+
+    boost::json::array arr_ret2api;
+    bj::object ret2api;
+
+    for (const auto &id : res_pid_set)
+    {
+        if (mysql_query(mysql_conn, (base_sql + boost::lexical_cast<std::string>(id) + ";").c_str()))
+        {
+            log->error(__LINE__, "mysql execute error! SQL: " + (base_sql + boost::lexical_cast<std::string>(id) + ";"));
+            this->db->mysql_conn_pool->free_conn(mysql_conn_id);
+            this->db->redis_conn_pool->free_conn(redis_conn_id);
+            throw "mysql execute error! SQL: " + (base_sql + boost::lexical_cast<std::string>(id) + ";");
+        }
+
+        res = mysql_store_result(mysql_conn);
+
+        if (mysql_affected_rows(mysql_conn) != 1)
+        {
+            log->error(__LINE__, "mysql affectedlines != 1.");
+            this->db->mysql_conn_pool->free_conn(mysql_conn_id);
+            this->db->redis_conn_pool->free_conn(redis_conn_id);
+            throw "mysql affectedlines != 1.";
+        }
+
+        while (column = mysql_fetch_row(res))
+        {
+            bj::object tmp;
+            tmp["title"] = column[1];
+            tmp["url"] = column[2];
+            tmp["summary"] = column[0];
+            arr_ret2api.emplace_back(tmp);
+        }
+    }
+
+    time_t t;
+    time(&t);
+    ret2api["objects"] = arr_ret2api;
+    ret2api["timestamp"] = t;
+
+    
+    // 输出json到redis
+
+    redisReply *reply = (redisReply *)redisCommand(redis_conn, ("SET req:" + boost::lexical_cast<std::string>(req_id) + " " + bj::serialize(ret2api)).c_str());
+    if (reply == NULL)
+    {
+        log->error(__LINE__, "redis error: msg: "+boost::lexical_cast<std::string>(reply->str));
+    }
+    freeReplyObject(reply);
+
+    this->db->mysql_conn_pool->free_conn(mysql_conn_id);
+    this->db->redis_conn_pool->free_conn(redis_conn_id);
 }
 
 unsigned int Searcher::get_Searcher_id()
@@ -264,4 +329,60 @@ unsigned int Searcher::get_Searcher_id()
 
     mtx_Searcher_id.unlock();
     return ret;
+}
+
+/**
+ * @brief 采用dfs来检查待选网页集合
+ *
+ * @param key_num 当前正在处理的关键词的序号
+ * @param key_arr_size 最大关键词序号
+ * @param idWebPage 当前正在处理的网页号
+ * @param base_offset 基础offset
+ * @param max_delta 关键词之间的最大间隔值
+ * @param inv_node_map 备选倒排索引结点map
+ * @param its 备选倒排索引列表迭代器数组
+ * @param its_end 备选单词的倒排索引列表的end()迭代器数组
+ * @return true 该网页符合要求
+ * @return false 该网页不符合要求
+ */
+bool Searcher::searcher::dfs_check_relationship(const unsigned int &key_num, const unsigned int &key_arr_size, const unsigned int &idWebPage, const unsigned int &base_offset, const unsigned int &max_delta, std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> &inv_node_map, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its_end)
+{
+    if (key_num >= key_arr_size)
+    {
+        auto it = its[key_num - 1];
+        // 将当前的指针移动到下一个page
+        while ((*it)->idWebPage == idWebPage && (it != its_end[key_num - 1]))
+            ++it;
+
+        its[key_num - 1] = it;
+        return true;
+    }
+
+    auto it = its[key_num];
+
+    while ((it != its_end[key_num]) && ((*it)->idWebPage == idWebPage))
+    {
+        if (abs((long long)((*it)->offset - base_offset)) <= max_delta)
+        {
+
+            if (dfs_check_relationship(key_num + 1, key_arr_size, idWebPage, (*it)->offset, max_delta, inv_node_map, its, its_end))
+                return true;
+            else
+            {
+                // 将当前的指针移动到下一个page
+                while ((*it)->idWebPage == idWebPage && (it != its_end[key_num]))
+                    ++it;
+
+                its[key_num] = it;
+                return false;
+            }
+        }
+    }
+
+    // 将当前的指针移动到下一个page
+    while ((*it)->idWebPage == idWebPage && (it != its_end[key_num]))
+        ++it;
+
+    its[key_num] = it;
+    return false;
 }

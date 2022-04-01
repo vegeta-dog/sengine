@@ -23,15 +23,15 @@ namespace Searcher
     private:
         /**
          * @brief 读取倒排索引文件
-         * 
+         *
          * @param key 关键字
-         * @return indexBuilder::InvertedIndex::InvertedIndex_List 
+         * @return indexBuilder::InvertedIndex::InvertedIndex_List
          */
         indexBuilder::InvertedIndex::InvertedIndex_List read_inv_index(const std::string &key);
 
         /**
-         * @brief 采用dfs来检查待选网页集合中
-         * 
+         * @brief 采用dfs来检查待选网页集合
+         *
          * @param key_num 当前正在处理的关键词的序号
          * @param key_arr_size 最大关键词序号
          * @param idWebPage 当前正在处理的网页号
@@ -39,18 +39,19 @@ namespace Searcher
          * @param max_delta 关键词之间的最大间隔值
          * @param inv_node_map 备选倒排索引结点map
          * @param its 备选倒排索引列表迭代器数组
+         * @param its_end 备选单词的倒排索引列表的end()迭代器数组
          * @return true 该网页符合要求
          * @return false 该网页不符合要求
          */
-        bool dfs_check_relationship(const unsigned int &key_num,  const unsigned int &key_arr_size, const unsigned int &idWebPage, const unsigned int &base_offset, const unsigned int &max_delta, std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> &inv_node_map, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its);
+        bool dfs_check_relationship(const unsigned int &key_num, const unsigned int &key_arr_size, const unsigned int &idWebPage, const unsigned int &base_offset, const unsigned int &max_delta, std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> &inv_node_map, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its_end);
 
         /**
          * @brief 输出检索结果到redis
-         * 
-         * @param raw_user_input 用户原始输入的字符串
+         *
+         * @param req_id 用户请求的id
          * @param res_pid_set 最终文章的结果集
          */
-        void output_result(const std::string& raw_user_input, std::set<unsigned int> &res_pid_set);
+        void output_result(const unsigned int &req_id, std::set<unsigned int> &res_pid_set);
 
         Database::DataBase *db;
         logging::logger *log;

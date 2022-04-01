@@ -370,9 +370,9 @@ void Evaluator::evaluator::run()
             to_index_builder["title"] = msg_obj.at("title");
             to_index_builder["content"] = msg_obj.at("content");
 
-            send2indexBuilder_queue.push(boost::json::serialize(to_index_builder));
 
-            // todo: 将下一步要爬取的链接发回给爬虫模块
+            // 将下一步要爬取的链接发回给爬虫模块
+            send2indexBuilder_queue.push(boost::json::serialize(to_index_builder));
         }
         catch (const std::exception &e)
         {
