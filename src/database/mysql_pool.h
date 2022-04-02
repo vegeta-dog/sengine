@@ -94,8 +94,9 @@ namespace Database::MysqlPool {
          * @return 数据库连接
          */
         MYSQL *get_conn(int &id) {
-            if (this->conn_num_free == 0) {
-                return NULL;
+            while(conn_num_free == 0)
+            {
+                usleep(100);
             }
 
             mtx.lock();

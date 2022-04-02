@@ -89,8 +89,9 @@ namespace Database::RedisPool {
         }
 
         redisContext *get_conn(int &id) {
-            if (empty_num == 0) {
-                return NULL;
+            while(empty_num == 0)
+            {
+                usleep(100);
             }
 
             mtx.lock();
