@@ -10,6 +10,7 @@ sys.path.append('..')
 
 from utils.kafka_py import client
 from se_crawler_dir.crawlerServer import CrawlerServer
+from utils.configParser import configParser
 
 to_index_que = queue.Queue()
 to_eva_que = queue.Queue()
@@ -39,12 +40,13 @@ class WordSplitServer(multiprocessing.Process):
         super(WordSplitServer, self).__init__()
 
     def run(self) -> None:
+
         logging.basicConfig(level=logging.WARNING)
         wordSplit.jieba_init()
         http_receiver = client.Consumer(topics=[client.API_Topic], groupid=client.Group_ID, handler=http_handler)
         crawl_receiver = client.Consumer(topics=[client.Pipe_Topic], groupid=client.Group_ID_3, handler=crawl_handler)
         to_index_producer = client.Producer(topic=client.Index_Topic, message_que=to_index_que)
-        to_eva_producer = client.Producer(topic=client.URL_Topic, message_que=to_eva_que)  # 最后需要把URLTopic改称eva_Topic
+        to_eva_producer = client.Producer(topic=client.URL_Topics [wss这里要修改], message_que=to_eva_que)  # 最后需要把URLTopic改称eva_Topic
         # 启动
         http_receiver.start()
         crawl_receiver.start()
@@ -64,6 +66,10 @@ class WordSplitServer(multiprocessing.Process):
 
 
 if __name__ == '__main__':
+    
+    dic = configParser.load_config()
+    print(dic)
+
     cs = CrawlerServer()
     ws = WordSplitServer()
     cs.start()

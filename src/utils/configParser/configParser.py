@@ -1,27 +1,25 @@
 import configparser
-import os
+import os, sys
 
 
-def load_config(path):
+def load_config(path="../config.ini"):
     """
     :param path: 配置文件的路径
     :return:
     """
+    print(os.getcwd())
     parser = configparser.ConfigParser()
     parser.read(path, encoding='utf8')
 
-    assert len(parser.sections()) == 3
+    # 只有 4 个属性, 如果需要添加, 清后续修改
+    assert len(parser.sections()) == 4
 
-    # 获取整型参数，按照key-value的形式保存
-    _conf_ints = [(key, int(value)) for key, value in parser.items('ints')]
+    _conf_database = [(key, value) for key, value in parser.items("DataBase")]
+    
+    _conf_kafka = [(key, value) for key, value in parser.items("Kafka")]
 
-    # 获取浮点型参数，按照key-value的形式保存
-    _conf_floats = [(key, float(value)) for key, value in parser.items('floats')]
+    _conf_evaluator = [(key, value) for key, value in parser.items("Evaluator")]
+    
+    _conf_index_builder = [(key, value) for key, value in parser.items("indexBuilder")]
 
-    # 获取字符型参数，按照key-value的形式保存
-    _conf_strings = [(key, str(value)) for key, value in parser.items('strings')]
-
-    # 返回一个字典对象，包含读取的参数
-    return dict(_conf_ints + _conf_floats + _conf_strings)
-
-
+    return dict(_conf_database, _conf_kafka, _conf_evaluator, _conf_index_builder)
