@@ -4,7 +4,7 @@ from kafka.consumer import KafkaConsumer
 from kafka.producer import KafkaProducer
 import threading
 
-server_host = ""
+server_host = "dorm.mysite.ink:19092"
 
 Pipe_Topic = "a"     # 爬虫与分词模块的通信topic
 WordSplit_Topic = "b"    # 暂未使用

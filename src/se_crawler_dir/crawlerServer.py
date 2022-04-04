@@ -2,9 +2,9 @@ import os
 import queue
 import threading
 import sys
-sys.path.append("../..")
-sys.path.append("..")
-sys.path.append("../se_crawler_dir")
+sys.path.append(os.path.join(os.path.dirname(__file__), "../se_crawler_dir"))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 import scrapy
 import multiprocessing
 

@@ -2,7 +2,7 @@ import configparser
 import os, sys
 
 
-def load_config(path="../config.ini"):
+def load_config(path=os.path.join(os.path.dirname(__file__), "../../config.ini")):
     """
     :param path: 配置文件的路径
     :return:

@@ -1,13 +1,13 @@
 import json
+import os
 import multiprocessing
 import queue
 import sys
+import logging
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
 import wordSplit
-import logging
-
-sys.path.append('..')
-
 from utils.kafka_py import client
 from se_crawler_dir.crawlerServer import CrawlerServer
 from utils.configParser import configParser
@@ -70,9 +70,9 @@ if __name__ == '__main__':
     dic = configParser.load_config()
     print(dic)
 
-    cs = CrawlerServer()
+    # cs = CrawlerServer()
     ws = WordSplitServer()
-    cs.start()
+    # cs.start()
     ws.start()
-    cs.join()
+    # cs.join()
     ws.join()
