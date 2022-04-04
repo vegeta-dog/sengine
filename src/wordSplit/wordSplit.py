@@ -1,5 +1,6 @@
 import jieba
 import regex
+import string
 from jieba.analyse import textrank
 
 

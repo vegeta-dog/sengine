@@ -22,4 +22,4 @@ def load_config(path="../config.ini"):
     
     _conf_index_builder = [(key, value) for key, value in parser.items("indexBuilder")]
 
-    return dict(_conf_database, _conf_kafka, _conf_evaluator, _conf_index_builder)
+    return dict(_conf_database + _conf_kafka + _conf_evaluator + _conf_index_builder)

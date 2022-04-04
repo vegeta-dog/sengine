@@ -1,7 +1,7 @@
 import redis
 import kafka
 import datetime
-import md5
+import hashlib
 from flask import Flask, request
 
 from utils.kafka_py import client
@@ -9,6 +9,7 @@ from utils.kafka_py import client
 webapi_app = Flask("sEngine_webapi")
 redis_host = "localhost"
 redis_port = 6379
+
 
 def encodeMD5(s):
     s = s.encode('utf-8')
@@ -39,7 +40,7 @@ def webapi():
     hash_mark = encodeMD5(value)
 
     if redis_client.get(hash_mark) != None:
-        return 返回一个http response
+        return flask
 
     message = dict()
     message['id'] = hash_mark
@@ -52,7 +53,7 @@ def webapi():
     while True:
         time.sleep(0.1)
         if redis_client.get(hash_mark) != None:
-            return 返回一个http response 暂时不会写
+            return
 
 
 if __name__ == '__main__':

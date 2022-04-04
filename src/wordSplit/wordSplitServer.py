@@ -46,7 +46,7 @@ class WordSplitServer(multiprocessing.Process):
         http_receiver = client.Consumer(topics=[client.API_Topic], groupid=client.Group_ID, handler=http_handler)
         crawl_receiver = client.Consumer(topics=[client.Pipe_Topic], groupid=client.Group_ID_3, handler=crawl_handler)
         to_index_producer = client.Producer(topic=client.Index_Topic, message_que=to_index_que)
-        to_eva_producer = client.Producer(topic=client.URL_Topics [wss这里要修改], message_que=to_eva_que)  # 最后需要把URLTopic改称eva_Topic
+        to_eva_producer = client.Producer(topic=client.URL_Topic, message_que=to_eva_que)  # 最后需要把URLTopic改称eva_Topic
         # 启动
         http_receiver.start()
         crawl_receiver.start()

@@ -37,10 +37,14 @@ que_list = [
 
 def start_crawlers():
     # logger = logging.getLogger(__name__)
+    # 获取原本的路径, 转换路径获取settings文件内容,然后切换回去原本的路径
+    org_path = os.getcwd()
+    os.chdir(os.path.join(os.path.dirname(__file__), 'se_crawler'))
     settings = get_project_settings()
+    os.chdir(org_path)
+
     configure_logging(settings)
     runner = CrawlerRunner(settings)
-    print(">>>>>>>>>>>>")
     # 装载爬虫
     runner.crawl(csdn.CsdnSpider)
     # 爬虫结束后停止事件循环
@@ -71,11 +75,7 @@ def url_sender(message):
 class CrawlerServer(multiprocessing.Process):
     def __init__(self):
         super(CrawlerServer, self).__init__()
-        import os
-        print(os.getcwd())
-        os.chdir(os.path.join(os.path.dirname(__file__), 'se_crawler'))
-        print(os.getcwd())
-        print(os.getcwd())
+        # os.chdir(os.path.join(os.path.dirname(__file__), 'se_crawler'))
 
     def run(self) -> None:
         pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que)
@@ -89,6 +89,16 @@ class CrawlerServer(multiprocessing.Process):
         pip_producer.join()
 
 
-
+if __name__ == '__main__':
+    # 生产者 消费者
+    pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que)
+    url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender)
+    url_consumer.start()
+    pip_producer.start()
+    # 启动爬虫
+    start_crawlers()
+    # 阻塞直到爬虫任务完成
+    url_consumer.join()
+    pip_producer.join()
 
 
