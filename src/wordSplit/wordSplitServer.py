@@ -1,15 +1,16 @@
 import json
+import os
 import multiprocessing
 import queue
 import sys
+import logging
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
 import wordSplit
-import logging
-
-sys.path.append('..')
-
 from utils.kafka_py import client
 from se_crawler_dir.crawlerServer import CrawlerServer
+from utils.configParser import configParser
 
 to_index_que = queue.Queue()
 to_eva_que = queue.Queue()
@@ -39,6 +40,7 @@ class WordSplitServer(multiprocessing.Process):
         super(WordSplitServer, self).__init__()
 
     def run(self) -> None:
+
         logging.basicConfig(level=logging.WARNING)
         wordSplit.jieba_init()
         http_receiver = client.Consumer(topics=[client.API_Topic], groupid=client.Group_ID, handler=http_handler)
@@ -64,9 +66,13 @@ class WordSplitServer(multiprocessing.Process):
 
 
 if __name__ == '__main__':
-    cs = CrawlerServer()
+    
+    dic = configParser.load_config()
+    print(dic)
+
+    # cs = CrawlerServer()
     ws = WordSplitServer()
-    cs.start()
+    # cs.start()
     ws.start()
-    cs.join()
+    # cs.join()
     ws.join()

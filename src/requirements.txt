@@ -2,3 +2,4 @@ flask
 jieba
 scrapy
 kafka-python==2.0.2
+redis
