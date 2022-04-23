@@ -40,3 +40,5 @@ cmake-build-debug/
 /.idea/
 /src/crawler/config.ini
 /src/config.ini
+
+*.pyc

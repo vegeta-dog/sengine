@@ -8,6 +8,8 @@
 #include <string>
 #include <mutex>
 #include <hiredis/hiredis.h>
+#include <unistd.h>
+
 #include "logger/logger.h"
 #include "iostream"
 

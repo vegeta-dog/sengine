@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _INDEXBUILDER_H_
+#define _INDEXBUILDER_H_
 
 #include "../utils/logger/logger.h"
 #include "../utils/kafka-cpp/kafka_client.h"
@@ -45,7 +47,7 @@ namespace indexBuilder
      * @param path 已经存在的索引文件的路径（若为-1，则创建新的索引）
      * @param pre_proc_list 当前关键字预处理的倒排列表
      */
-    void worker(boost::json::object &msg_obj, unsigned int id, std::string key, std::string path, indexBuilder::InvertedIndex::InvertedIndex_List &pre_proc_list, Database::DataBase *db, logging::logger *log);
+    static void worker(boost::json::object &msg_obj, unsigned int id, std::string key, std::string path, indexBuilder::InvertedIndex::InvertedIndex_List &pre_proc_list, Database::DataBase *db, logging::logger *log);
 
     /**
      * @brief 启动索引构建器模块
@@ -58,21 +60,21 @@ namespace indexBuilder
      *
      * @param db 数据库对象
      */
-    void do_start(Database::DataBase *db);
+    static void do_start(Database::DataBase *db);
 
     /**
      * @brief 从内容评估器接收消息的回调函数
      *
      * @param rec
      */
-    void message_recv_from_Eva_handler(kafka::clients::consumer::ConsumerRecord rec);
+    static void message_recv_from_Eva_handler(kafka::clients::consumer::ConsumerRecord rec);
 
     /**
      * @brief 预处理网页，为每个网页构建倒排列表
      *
      * @param inv_lists
      */
-    void preprocess(std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> &inv_map, boost::json::object &msg_obj);
+    static void preprocess(std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> &inv_map, boost::json::object &msg_obj);
 
     /**
      * @brief 生成倒排索引文件的k路径
@@ -80,7 +82,9 @@ namespace indexBuilder
      * @param id 倒排索引的id
      * @return std::string 生成的路径
      */
-    std::string gen_invIndex_filepath(const int &id);
+    static std::string gen_invIndex_filepath(const int &id);
 
-    unsigned int get_indexBuilder_id();
+    static unsigned int get_indexBuilder_id();
 }
+
+#endif

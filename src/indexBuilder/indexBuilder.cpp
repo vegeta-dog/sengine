@@ -79,7 +79,7 @@ void indexBuilder::message_recv_from_Eva_handler(kafka::clients::consumer::Consu
  *
  * @param db 数据库对象
  */
-void do_start(Database::DataBase *db)
+void indexBuilder::do_start(Database::DataBase *db)
 {
     indexBuilder::builder bd(db);
     builder_objs.emplace_back(&bd);

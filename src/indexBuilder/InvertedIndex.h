@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 #include<set>
 #include <boost/archive/binary_iarchive.hpp>
@@ -41,8 +42,10 @@ namespace indexBuilder::InvertedIndex
         friend class boost::serialization::access;
 
     public:
-        InvertedIndex_List();
-        InvertedIndex_List(std::string key);
+        InvertedIndex_List() = default;
+        explicit InvertedIndex_List(std::string key){
+        this->key = std::move(key);
+    };
         ~InvertedIndex_List() = default;
 
         // 倒排列表的key
@@ -62,7 +65,7 @@ namespace indexBuilder::InvertedIndex
     private:
     };
 
-    bool cmp_list_node(const indexBuilder::InvertedIndex::list_node &a, const indexBuilder::InvertedIndex::list_node &b)
+    static bool cmp_list_node(const indexBuilder::InvertedIndex::list_node &a, const indexBuilder::InvertedIndex::list_node &b)
     {
         if (a.idWebPage < b.idWebPage)
             return true;
@@ -72,9 +75,7 @@ namespace indexBuilder::InvertedIndex
             return (a.offset < b.offset);
     }
 
-    InvertedIndex_List::InvertedIndex_List(std::string key)
-    {
-        this->key = key;
-    }
+    
+    
 
 };

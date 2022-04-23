@@ -51,7 +51,7 @@ add_link_options( -lssl -lz -ldl )
 set (CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
 
 set(Boost_USE_STATIC_LIBS   ON)
-FIND_PACKAGE(Boost COMPONENTS system filesystem program_options thread json REQUIRED )
+FIND_PACKAGE(Boost COMPONENTS system filesystem program_options thread json serialization REQUIRED )
 if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     MESSAGE( STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}.")
@@ -75,6 +75,7 @@ add_executable(sEngine ${DIR_SRCS})
 # 引用的开源库
 target_link_libraries(evaluator Boost::json)
 target_link_libraries(indexBuilder Boost::json)
+target_link_libraries(indexBuilder Boost::serialization)
 target_link_libraries(indexBuilder bundle)
 
 target_link_libraries(sEngine ${Boost_LIBRARIES})

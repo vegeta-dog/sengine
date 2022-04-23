@@ -10,6 +10,7 @@
 #include<mysql/mysql.h>
 #include "logger/logger.h"
 #include "iostream"
+#include <unistd.h>
 
 #define E_mysql_pool_CONN_NULL 1
 #define E_mysql_pool_CONN_FLAG_NULL 2
