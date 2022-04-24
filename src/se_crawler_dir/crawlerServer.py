@@ -18,9 +18,10 @@ from se_crawler.spiders import cnblogSpider as cnblog
 from se_crawler import pipelines as pipe
 
 from utils.kafka_py import client
+from utils.configParser import configParser
 
 
-
+server_host = ""  # kafka服务器地址
 
 # 注册好每个爬虫的合法域名
 domain_list = [
@@ -56,7 +57,7 @@ def start_crawlers():
 
 # 写 一个con, 一个prod
 
-def url_sender(message):
+def url_sender(message):  # simulate the evaluator send msg to crawler
     global domain_list
 
     for i, domain in enumerate(domain_list):
@@ -65,21 +66,22 @@ def url_sender(message):
             print("strs = ", strs)
             if strs.startswith(domain):
                 print("url sender: find csdn url! now send to csdn_que.")
-                csdn.que.put(message['url'], block=True)
+                que_list[i].put(message['url'], block=True)
                 break  # 找到一个爬虫愿意接收这个网页即可
         except TypeError as e:     # 上面的操作有可能数组越界,但是不影响
             print(e.args, "but doesn't matter.")
             break
 
 
+# 用于调试的进程类 - 被抛弃
 class CrawlerServer(multiprocessing.Process):
     def __init__(self):
         super(CrawlerServer, self).__init__()
         # os.chdir(os.path.join(os.path.dirname(__file__), 'se_crawler'))
 
     def run(self) -> None:
-        pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que)
-        url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender)
+        pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que, broker=server_host)
+        url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender, broker=server_host)
         url_consumer.start()
         pip_producer.start()
         # 启动爬虫
@@ -90,10 +92,13 @@ class CrawlerServer(multiprocessing.Process):
 
 
 if __name__ == '__main__':
+    config_dic = configParser.load_config()
+    server_host = config_dic['kafka_brokers']
     # 生产者 消费者
-    # csdn.que.put("https://blog.csdn.net/lin443514407lin/article/details/124356705", block=True)
-    pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que)
-    url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender)
+
+    pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que, broker=server_host)
+    url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender, broker=server_host)
+
     url_consumer.start()
     pip_producer.start()
     # 启动爬虫

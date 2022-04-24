@@ -23,7 +23,7 @@
 namespace bj = boost::json;
 
 static logging::logger log_evaluator("Evaluator");
-static ThreadSafeQueue::queue<std::string> msg_queue; // 从爬虫模块收到的信息的队列
+static ThreadSafeQueue::queue<std::string> msg_queue; // 从爬虫模块收到的信息的队列, msg from word_split!
 
 static ThreadSafeQueue::queue<std::string> send2indexBuilder_queue; // 发送消息到索引构建器的队列
 
@@ -42,6 +42,8 @@ void Evaluator::run()
     std::string str;
     configParser::get_config("Evaluator.evaluator_num", &str);
     unsigned int evaluator_num = boost::lexical_cast<int>(str);
+
+    log_evaluator.info(__LINE__, "-----evaluator_num : " + std::to_string(evaluator_num));
 
     boost::thread *t;
     Evaluator::evaluator *eva_ptr;
@@ -82,7 +84,7 @@ std::string Evaluator::send_msg2indexBuilder_handler()
             if (e == -1)
                 usleep(100);
             else
-                std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
+                std::cerr << "Evaluator.cpp : At line " << __LINE__ << ": unexpected exception" << std::endl;
         }
     }
 }

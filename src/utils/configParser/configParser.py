@@ -2,7 +2,7 @@ import configparser
 import os, sys
 
 
-def load_config(path=os.path.join(os.path.dirname(__file__), "../../config.ini")):
+def load_config(path=os.path.join(os.path.dirname(__file__), "../../../build/config.ini")):
     """
     :param path: 配置文件的路径
     :return:
@@ -11,8 +11,12 @@ def load_config(path=os.path.join(os.path.dirname(__file__), "../../config.ini")
     parser = configparser.ConfigParser()
     parser.read(path, encoding='utf8')
 
+    print(path)
+    print(parser)
+
     # 只有 4 个属性, 如果需要添加, 清后续修改
-    assert len(parser.sections()) == 4
+    print(parser.sections())
+    assert len(parser.sections()) == 5
 
     _conf_database = [(key, value) for key, value in parser.items("DataBase")]
     
@@ -22,4 +26,6 @@ def load_config(path=os.path.join(os.path.dirname(__file__), "../../config.ini")
     
     _conf_index_builder = [(key, value) for key, value in parser.items("indexBuilder")]
 
-    return dict(_conf_database + _conf_kafka + _conf_evaluator + _conf_index_builder)
+    _conf_searcher = [(key, value) for key, value in parser.items("Searcher")]
+
+    return dict(_conf_database + _conf_kafka + _conf_evaluator + _conf_index_builder + _conf_searcher)
