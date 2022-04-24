@@ -31,7 +31,7 @@ class SeCrawlerPipeline:
 
         message['title_list'] = item['title_list']
         message["content_list"] = item["content_list"]
-        message['datetime'] = item['datetime']
+        message['timestamp'] = item['datetime']
         message_que.put(message, block=True)
         return item
 
