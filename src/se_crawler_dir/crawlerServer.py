@@ -68,7 +68,7 @@ def url_sender(message):
                 csdn.que.put(message['url'], block=True)
                 break  # 找到一个爬虫愿意接收这个网页即可
         except TypeError as e:     # 上面的操作有可能数组越界,但是不影响
-            print(e, "but doesn't matter.")
+            print(e.args, "but doesn't matter.")
             break
 
 
@@ -91,6 +91,7 @@ class CrawlerServer(multiprocessing.Process):
 
 if __name__ == '__main__':
     # 生产者 消费者
+    # csdn.que.put("https://blog.csdn.net/lin443514407lin/article/details/124356705", block=True)
     pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que)
     url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender)
     url_consumer.start()
