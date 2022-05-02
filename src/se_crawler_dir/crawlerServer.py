@@ -71,7 +71,7 @@ def url_sender(message):  # simulate the evaluator send msg to crawler
                 que_list[i].put(message['url'], block=True)
                 break  # 找到一个爬虫愿意接收这个网页即可
         except TypeError as e:     # 上面的操作有可能数组越界,但是不影响
-            print(e, "but doesn't matter.")
+            print(e.args, "but doesn't matter.")
             break
 
 
@@ -98,8 +98,10 @@ if __name__ == '__main__':
     server_host = config_dic['kafka_brokers']
     print(server_host)
     # 生产者 消费者
+
     pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que, broker=server_host)
     url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender, broker=server_host)
+
     url_consumer.start()
     pip_producer.start()
     # 启动爬虫
