@@ -92,6 +92,13 @@ namespace Evaluator
     std::string send_msg2indexBuilder_handler();
 
     /**
+     * @brief 向内容评估器发送数据的handler，从queue中读取数据并返回给producer
+     *
+     * @return std::string
+     */
+    std::string send_msg2Crawler_handler();
+
+    /**
      * 启动evaluator模块
      */
     void run();

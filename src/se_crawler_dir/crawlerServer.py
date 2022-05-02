@@ -59,11 +59,13 @@ def start_crawlers():
 
 def url_sender(message):  # simulate the evaluator send msg to crawler
     global domain_list
-
+    print(message)
     for i, domain in enumerate(domain_list):
+        if not message['url'].startswith("http"):
+            continue
         try:
             strs = message['url'].split(":")[1][2:]
-            print("strs = ", strs)
+            print("url-strs = ", strs)
             if strs.startswith(domain):
                 print("url sender: find csdn url! now send to csdn_que.")
                 que_list[i].put(message['url'], block=True)
@@ -94,6 +96,7 @@ class CrawlerServer(multiprocessing.Process):
 if __name__ == '__main__':
     config_dic = configParser.load_config()
     server_host = config_dic['kafka_brokers']
+    print(server_host)
     # 生产者 消费者
     pip_producer = client.Producer(topic=client.Pipe_Topic, message_que=pipe.message_que, broker=server_host)
     url_consumer = client.Consumer(topics=[client.URL_Topic], groupid=client.Group_ID_2, handler=url_sender, broker=server_host)

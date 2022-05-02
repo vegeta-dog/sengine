@@ -26,6 +26,7 @@ static logging::logger log_evaluator("Evaluator");
 static ThreadSafeQueue::queue<std::string> msg_queue; // 从爬虫模块收到的信息的队列, msg from word_split!
 
 static ThreadSafeQueue::queue<std::string> send2indexBuilder_queue; // 发送消息到索引构建器的队列
+static ThreadSafeQueue::queue<std::string> send2Crawler_queue; // 发送消息到爬虫的队列
 
 static std::list<boost::thread *> threads;
 static std::list<Evaluator::evaluator *> eva_objs;
@@ -58,7 +59,7 @@ void Evaluator::run()
         threads.emplace_back(t);
     }
 
-    // 启动kafka客户端
+    // 启动kafka客户端 
     configParser::get_config("Kafka.kafka_brokers", &str);
     t = new boost::thread(&Kafka_cli::do_start_kafka_consumer, str, "Crawler2Evaluator", "Eva_recv_crawl", &Evaluator::message_handler);
     threads.emplace_back(t);
@@ -66,10 +67,18 @@ void Evaluator::run()
     t = new boost::thread(&Kafka_cli::do_start_kafka_producer, str, "Evaluator2indexBuilder", &Evaluator::send_msg2indexBuilder_handler);
     threads.emplace_back(t);
 
+    t = new boost::thread(&Kafka_cli::do_start_kafka_producer, str, "Evaluator2Crawler", &Evaluator::send_msg2Crawler_handler);
+    threads.emplace_back(t);
+
     for (auto x = threads.begin(); x != threads.end(); ++x)
         (*x)->join();
 }
 
+/**
+ * @brief 
+ * 
+ * @return std::string 
+ */
 std::string Evaluator::send_msg2indexBuilder_handler()
 {
     while (true)
@@ -88,6 +97,26 @@ std::string Evaluator::send_msg2indexBuilder_handler()
         }
     }
 }
+
+std::string Evaluator::send_msg2Crawler_handler()
+{
+    while (true)
+    {
+
+        try
+        {
+            return send2Crawler_queue.getFront();
+        }
+        catch (int e)
+        {
+            if (e == -1)
+                usleep(100);
+            else
+                std::cerr << "Evaluator.cpp : At line " << __LINE__ << ": unexpected exception" << std::endl;
+        }
+    }
+}
+
 /**
  * @brief 真正启动评估器
  *
@@ -153,7 +182,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     // redis中不存在，查库
 
     std::string sql;
-    sql = "SELECT idWebPage, Crawl, UpdatedDateTime FROM WebPage WHERE url='" + url + "';";
+    sql = "SELECT idWebPage, Crawl, UpdatedTime FROM WebPage WHERE url='" + url + "';";
     if (mysql_query(this->mysql_conn, sql.c_str()))
     {
         log->error(__LINE__, "mysql query failed.");
@@ -170,7 +199,9 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     bool _crawl;
     std::string _id;
 
-    assert(mysql_affected_rows(this->mysql_conn) == 1);
+    if(mysql_affected_rows(this->mysql_conn) == 0)
+        return false;
+    //assert(mysql_affected_rows(this->mysql_conn) == 1);
     while (column = mysql_fetch_row(res))
     {
         _id = column[0];
@@ -196,7 +227,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     reply = (redisReply *)redisCommand(this->redis_conn, ("EXPIRE " + key + " 86400").c_str());
     freeReplyObject(reply);
 
-    key = " WebPage:" + url + ":UpdatedDateTime ";
+    key = " WebPage:" + url + ":UpdatedTime ";
     reply = (redisReply *)redisCommand(this->redis_conn, ("SET" + key + _updatedTime).c_str());
     if (reply == NULL)
     {
@@ -230,9 +261,11 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
 int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int crawl)
 {
     int ret = 0;
+    log->info(__LINE__, "store_weblink2db");
     if (!Evaluator::evaluator::check_url_in_db(url))
     {
         // url在数据库中不存在
+        log->info(__LINE__, "url在数据库中不存在 insert");
         char sql[2048];
         sprintf(sql, "INSERT INTO WebPage(idWebPage, url, Crawl)  VALUES(NULL, '%s', %d)", url.c_str(), crawl);
         mysql_autocommit(this->mysql_conn, OFF);
@@ -258,8 +291,9 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int 
     }
     else // url 在数据库中已存在
     {
-        // 先在redis中查询idWebPage
 
+        // 先在redis中查询idWebPage
+        log->info(__LINE__, "url在数据库中已经存在 update");
         std::string key = "WebPage:" + url;
 
         redisReply *reply = (redisReply *)redisCommand(this->redis_conn, ("GET " + key).c_str());
@@ -326,7 +360,7 @@ void Evaluator::evaluator::run()
             catch (int e)
             {
                 if (e == -1)
-                    usleep(100);
+                    usleep(100);   // can't get msg !!!!!
                 else
                     std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
                 continue;
@@ -340,16 +374,29 @@ void Evaluator::evaluator::run()
 
             int from_page_id = store_weblink2db(url, 1);
 
+            std::cout << "fuck 1" << std::endl;
+            
             auto urls = url_list.as_array();
             int to_page_id;
             for (const auto &u : urls)
             {
+                std::cout << "very before" << std::endl;
                 std::string x = bj::value_to<std::string>(u);
                 // 将网页上带有的链接存入数据库
                 to_page_id = store_weblink2db(x, 0);
                 // 创建weblink
                 create_LinkRecord(from_page_id, to_page_id);
+
+                // 暂时把所有的url都发回爬虫
+                std::cout << "before" << std::endl;
+                boost::json::object to_crawler;
+                to_crawler["url"] = x;
+                send2Crawler_queue.push(boost::json::serialize(to_crawler));
+                std::cout << "after" << std::endl;
             }
+
+            std::cout << "fuck you 2" << std::endl;
+
             // 填写count_total_link_to
             std::string sql = "UPDATE WebPage SET count_total_link_to=" + boost::lexical_cast<std::string>(urls.size()) + " WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
             mysql_autocommit(this->mysql_conn, OFF);
@@ -373,7 +420,8 @@ void Evaluator::evaluator::run()
             to_index_builder["content"] = msg_obj.at("content");
 
 
-            // 将下一步要爬取的链接发回给爬虫模块
+            // 将下一步要爬取的链接发回给爬虫模块 
+            // 不是给爬虫，这里应该是给索引构建器
             send2indexBuilder_queue.push(boost::json::serialize(to_index_builder));
         }
         catch (const std::exception &e)
@@ -396,7 +444,7 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from, unsigned int to)
     // 首先检查指向关系是否存在
     char sql[2048];
 
-    sprintf(sql, "SELECT COUNT(*) FROM LinkTable WHERE From=%d AND To=%d;", from, to);
+    sprintf(sql, "SELECT COUNT(*) FROM LinkTable WHERE LinkTable.From=%d AND LinkTable.To=%d;", from, to);
 
     if (mysql_query(this->mysql_conn, sql))
     {
@@ -422,7 +470,7 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from, unsigned int to)
 
     // 不存在链接，创建链接
     mysql_autocommit(this->mysql_conn, OFF);
-    sprintf(sql, "INSERT INTO LinkTable(From, To) VALUES(%d, %d);", from, to);
+    sprintf(sql, "INSERT INTO LinkTable(LinkTable.From, LinkTable.To) VALUES(%d, %d);", from, to);
     if (mysql_query(this->mysql_conn, sql))
     {
         log->error(__LINE__, "Failed to create LinkRecord. Message:" + boost::lexical_cast<std::string>(mysql_error(this->mysql_conn)));

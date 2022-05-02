@@ -4,10 +4,10 @@ from kafka.consumer import KafkaConsumer
 from kafka.producer import KafkaProducer
 import threading
 
-server_host = ""
+server_host = ""  # none initialy
 
 Pipe_Topic = "Crawler2WordSplit"     # 爬虫与分词模块的通信topic
-WordSplit_Topic = "WordSplit2Evaluator"    # WordSplit to Evaluator
+# WordSplit_Topic = "WordSplit2Evaluator"    # WordSplit to Evaluator | not using 
 API_Topic = "API2WordSplit"     # 分词与API之间的通信topic
 Evaluator_Topic = "Crawler2Evaluator"    # 评估器与分词模块之间的通信topic
 URL_Topic = "Evaluator2Crawler"  # 评估器与爬虫之间的topic
@@ -53,14 +53,13 @@ class Consumer(threading.Thread):
             self.handler(json.loads(message.value.decode()))
         print("cinsumer run over")
 
-    def __init__(self, topics, groupid, handler, auto_offset_reset='latest', broker=server_host):
+    def __init__(self, topics, groupid, handler, auto_offset_reset='earliest', broker=server_host):
         super(Consumer, self).__init__()
         self.consumer = KafkaConsumer(
             bootstrap_servers=broker,
             group_id=groupid,
-            auto_offset_reset=auto_offset_reset,
+            auto_offset_reset=auto_offset_reset,  # 'latest' / 'earliest' / 'none'
             # value_deserializer=lambda m: json.loads(m.decode('utf8')),
-
         )
         self.group_id = topics[0]
         self.consumer.subscribe(topics)

@@ -18,7 +18,7 @@ class CsdnSpider(scrapy.Spider):
     
     def start_requests(self):
         print("run_spider")
-        url = que.get(block=True)
+        url = que.get(block=True, timeout=10000)  # 设置10s的时间限制, 否则抛出异常
         yield Request(url, callback=self.parse)
 
     def parse(self, response, **kwargs):

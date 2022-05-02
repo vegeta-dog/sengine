@@ -56,15 +56,15 @@ class WordSplitServer(multiprocessing.Process):
 
         print("start wordsplit_server url _send !!")
 
-        # 
-        # msg = {
-        #     'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919",
-        #     'title' : None,
-        #     'content' : [],
-        #     'url_list' : [],
-        #     'timestamp' : 0
-        # }
-        # to_eva_que.put(msg, block=True)
+        msg = {
+            'url': "",
+            'title' : None,
+            'content' : [],
+            'url_list' : ["https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"],
+            'timestamp' : 0
+        }
+        # msg = {'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"}
+        to_eva_que.put(msg, block=True)
 
         # ??
         http_receiver.join()
