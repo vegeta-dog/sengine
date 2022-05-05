@@ -25,15 +25,9 @@ def http_handler(message):
 
 
 def crawl_handler(message):
-    message['title_list'] = wordSplit.exact_wordcut(message['title_list'])
-    message['content_list'] = wordSplit.exact_wordcut(message['content_list'])
-
-    for url in message['url_list']:
-        print("send url to que")
-        tmp = {"url": url}
-        to_eva_que.put(tmp, block=True)  # 传入评估器队列
-        print("send ok!")
-    print("send all!")
+    message['title'] = wordSplit.exact_wordcut(message['title_list'])
+    message['content'] = wordSplit.exact_wordcut(message['content_list'])
+    to_eva_que.put(message, block=True)
 
 
 class WordSplitServer(multiprocessing.Process):
