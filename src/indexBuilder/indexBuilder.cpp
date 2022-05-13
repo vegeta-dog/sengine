@@ -364,7 +364,7 @@ static std::string get_inv_index_path(const std::string &key, logging::logger *l
 }
 
 /**
- * @brief 生成倒排索引文件的k路径
+ * @brief 生成倒排索引文件的路径
  *
  * @param id 倒排索引的id
  * @return std::string 生成的路径

@@ -292,7 +292,8 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
     }
 
     mysql_autocommit(this->mysql_conn, ON);
-  } else  // url 在数据库中已存在
+  } 
+  else  // url 在数据库中已存在
   {
     // 先在redis中查询idWebPage
     log->info(__LINE__, "url在数据库中已经存在 update");
@@ -384,6 +385,11 @@ void Evaluator::evaluator::run() {
         log->warn(__LINE__, "urlx = " + x);
 
         to_page_id = store_weblink2db(x, 0);
+
+        if (!to_page_id) {
+            log->info(__LINE__, "str to_page_id = " + x);
+        }
+
         // 创建weblink
         create_LinkRecord(from_page_id, to_page_id);
 

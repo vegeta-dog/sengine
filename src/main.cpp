@@ -47,7 +47,7 @@ void do_run_all()
 {
     run_evaluator();
     //run_indexBuilder();
-    //run_searcher();
+    run_searcher();
 
 }
 
