@@ -19,7 +19,7 @@ USE `sEngine` ;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `sEngine`.`WebPage` (
   `idWebPage` INT NOT NULL AUTO_INCREMENT,
-  `url` INT NOT NULL,
+  `url` VARCHAR(255) NOT NULL,
   `title` TEXT(50) NULL,
   `document` TEXT(1200) NULL,
   `UpdatedTime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
