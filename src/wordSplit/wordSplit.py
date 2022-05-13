@@ -24,7 +24,7 @@ def exact_wordcut(sentence_list):
     return word_list
 
 
-def token_wordcut(sentence_list, topK=100):
+def token_wordcut(sentence_list, topK=5000):
     word_list = []
     for sentence in sentence_list:
         for word in textrank(sentence, topK=topK):

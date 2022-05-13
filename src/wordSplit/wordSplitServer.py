@@ -51,7 +51,7 @@ class WordSplitServer(multiprocessing.Process):
         print("start wordsplit_server url _send !!")
 
         msg = {
-            'url': "",
+            'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919",
             'title' : None,
             'content' : [],
             'url_list' : ["https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"],

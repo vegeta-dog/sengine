@@ -45,7 +45,7 @@ void Searcher::run()
 void Searcher::do_start(Database::DataBase *db)
 {
     Searcher::searcher sc(db);
-    searhcer_objs.emplace_back(&sc);
+    searhcer_objs.emplace_back(&sc);  // 这里存下来有什么用???
     sc.run();
 }
 
