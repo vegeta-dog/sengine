@@ -114,7 +114,7 @@ void indexBuilder::builder::run()
             // 为当前网页创建倒排列表
             preprocess(inv_map, msg_obj);
 
-            unsigned int page_id = msg_obj.at("id").as_uint64();
+            unsigned int page_id = boost::lexical_cast<uint64_t>(msg_obj.at("id"));
             int tmp_conn_id;
             MYSQL *tmp_conn;
             boost::thread *t;
@@ -169,14 +169,14 @@ void indexBuilder::preprocess(std::map<std::string, indexBuilder::InvertedIndex:
     arr[1] = msg_obj.at("content").as_array();
 
     std::list<std::string> keys;
-
-    unsigned int id = msg_obj.at("id").as_uint64();
+    std::cout << msg_obj.at("id") << std::endl;
+    unsigned int id = boost::lexical_cast<uint64_t>(msg_obj.at("id"));
 
     unsigned int offset = 0;
     for (const auto &ar : arr)
         for (boost::json::value item : ar)
         {
-            std::string str = bj::value_to<std::string>(item);
+            std::string str = boost::lexical_cast<std::string>(item);
 
             if (!inv_map.count(str)) // 当前网页还没有统计过这个key，创建倒排列表
             {
@@ -259,7 +259,7 @@ void indexBuilder::worker(bj::object &msg_obj, unsigned int id, std::string key,
         fout.close();
 
         // 在mysql中更新值
-        std::string sql = "UPDATE InvertedIndexTable SET path='" + opath + "'WHERE key='" + key + "';";
+        std::string sql = "UPDATE InvertedIndexTable SET path='" + opath + "'WHERE InvertedIndexTable.key='" + key + "';";
         while (true)
         {
             mysql_conn = db->mysql_conn_pool->get_conn(mysql_id);
@@ -272,7 +272,10 @@ void indexBuilder::worker(bj::object &msg_obj, unsigned int id, std::string key,
         mysql_autocommit(mysql_conn, OFF);
         if (mysql_query(mysql_conn, sql.c_str()))
         {
-            log->error(__LINE__, "mysql query failed.");
+            log->error(__LINE__, "mysql query failed. Message:" +
+                                     boost::lexical_cast<std::string>(
+                                         mysql_error(mysql_conn)));
+            std::cout << "sql=\t" + sql << std::endl;
             mysql_rollback(mysql_conn);
             mysql_autocommit(mysql_conn, ON);
             db->mysql_conn_pool->free_conn(mysql_id);
@@ -289,7 +292,7 @@ void indexBuilder::worker(bj::object &msg_obj, unsigned int id, std::string key,
         fout.close();
 
         // 在mysql中更新值
-        std::string sql = "INSERT INTO InvertedIndexTable(key, path) VALUES('" + key + "', '" + opath + "');";
+        std::string sql = "INSERT INTO InvertedIndexTable(InvertedIndexTable.key, path) VALUES('" + key + "', '" + opath + "');";
 
         while (true)
         {
@@ -302,7 +305,10 @@ void indexBuilder::worker(bj::object &msg_obj, unsigned int id, std::string key,
 
         if (mysql_query(mysql_conn, sql.c_str()))
         {
-            log->error(__LINE__, "mysql query failed.");
+            log->error(__LINE__, "mysql query failed. Message:" +
+                                     boost::lexical_cast<std::string>(
+                                         mysql_error(mysql_conn)));
+            std::cout << "sql=\t" + sql << std::endl;
             db->mysql_conn_pool->free_conn(mysql_id);
             return;
         }
@@ -339,10 +345,13 @@ void indexBuilder::worker(bj::object &msg_obj, unsigned int id, std::string key,
 static std::string get_inv_index_path(const std::string &key, logging::logger *log, MYSQL *mysql_conn)
 {
     std::string sql;
-    sql = "SELECT path FROM InvertedIndexTable WHERE key='" + key + "';";
+    sql = "SELECT path FROM InvertedIndexTable WHERE InvertedIndexTable.key='" + key + "';";
     if (mysql_query(mysql_conn, sql.c_str()))
     {
-        log->error(__LINE__, "mysql query failed.");
+        log->error(__LINE__, "mysql query failed. Message:" +
+                                 boost::lexical_cast<std::string>(
+                                     mysql_error(mysql_conn)));
+        std::cout << "sql=\t" + sql << std::endl;
         return "-1";
     }
 

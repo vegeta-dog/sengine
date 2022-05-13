@@ -425,7 +425,7 @@ void Evaluator::evaluator::run() {
       // 暂时所有网页都收录
       // todo: 评估内容
       boost::json::object to_index_builder;
-      to_index_builder["id"] = boost::lexical_cast<std::string>(from_page_id);
+      to_index_builder["id"] = boost::lexical_cast<uint64_t>(from_page_id);
       to_index_builder["title"] = msg_obj.at("title");
       to_index_builder["content"] = msg_obj.at("content");
 

@@ -16,6 +16,7 @@ Kafka_cli::consumer::consumer(std::string brokers, std::string topic, bool auto_
         {"bootstrap.servers", this->brokers},
         {"enable.auto.commit", (auto_commit ? "true" : "false")},
         {"group.id", this->group_id},
+        {"auto.offset.reset", "earliest"},
     });
 
     this->csm = new kafka::clients::KafkaConsumer(props);

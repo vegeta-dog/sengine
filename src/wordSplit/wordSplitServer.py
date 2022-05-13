@@ -52,10 +52,10 @@ class WordSplitServer(multiprocessing.Process):
 
         msg = {
             'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919",
-            'title' : None,
-            'content' : [],
-            'url_list' : ["https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"],
-            'timestamp' : 0
+            'title': ["title", 'title test'],
+            'content': ["ttestt"],
+            'url_list': ["https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"],
+            'timestamp': 0
         }
         # msg = {'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"}
         to_eva_que.put(msg, block=True)
