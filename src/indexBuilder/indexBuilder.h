@@ -77,7 +77,7 @@ namespace indexBuilder
     static void preprocess(std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> &inv_map, boost::json::object &msg_obj);
 
     /**
-     * @brief 生成倒排索引文件的k路径
+     * @brief 生成倒排索引文件的路径
      *
      * @param id 倒排索引的key
      * @return std::string 生成的路径
