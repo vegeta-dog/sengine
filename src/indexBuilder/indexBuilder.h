@@ -79,10 +79,10 @@ namespace indexBuilder
     /**
      * @brief 生成倒排索引文件的k路径
      *
-     * @param id 倒排索引的id
+     * @param id 倒排索引的key
      * @return std::string 生成的路径
      */
-    static std::string gen_invIndex_filepath(const int &id);
+    static std::string gen_invIndex_filepath(const std::string &key);
 
     static unsigned int get_indexBuilder_id();
 }
