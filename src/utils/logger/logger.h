@@ -27,7 +27,7 @@ namespace logging{
         void critical(const int &line, const std::string& msg);
 
     private:
-
+        
         char module_name[4096];
         int pid, tid;
     };
