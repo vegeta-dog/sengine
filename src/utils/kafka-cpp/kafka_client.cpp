@@ -1,6 +1,8 @@
 #include "kafka_client.h"
 #include <boost/lexical_cast.hpp>
 
+// @todo: 限制队列大小 
+
 Kafka_cli::consumer::consumer(std::string brokers, std::string topic, bool auto_commit, std::string group_id, void (*hdl)(kafka::clients::consumer::ConsumerRecord))
 {
     this->brokers = brokers;

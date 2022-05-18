@@ -97,7 +97,7 @@ namespace Database::MysqlPool {
         MYSQL *get_conn(int &id) {
             while(conn_num_free == 0)
             {
-                usleep(100);
+                usleep(100'0000);
             }
 
             mtx.lock();
@@ -119,7 +119,7 @@ namespace Database::MysqlPool {
                 mtx.lock();
 
                 conn_flag[id] = false;
-                ++this->max_conn_num;
+                ++(this->conn_num_free);
 
                 mtx.unlock();
             }

@@ -82,7 +82,7 @@ namespace indexBuilder
      * @param id 倒排索引的key
      * @return std::string 生成的路径
      */
-    static std::string gen_invIndex_filepath(const std::string &key);
+    static std::string gen_invIndex_filepath(const std::string key);
 
     static unsigned int get_indexBuilder_id();
 }

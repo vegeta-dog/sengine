@@ -22,7 +22,7 @@
 namespace bj = boost::json;
 namespace bio = boost::iostreams;
 
-static logging::logger log_evaluator("IndexBuilder");
+static logging::logger log_indexBuilder("IndexBuilder");
 
 static std::list<boost::thread *> threads;
 static std::list<indexBuilder::builder *> builder_objs;
@@ -48,8 +48,7 @@ static std::string get_string_md5(const std::string &input)
     return ret;
 }
 
-static std::string get_inv_index_path(const std::string &key,
-                                      logging::logger *log, MYSQL *mysql_conn);
+static std::string get_inv_index_path(const std::string &key, logging::logger *log, MYSQL *mysql_conn);
 
 indexBuilder::builder::builder(Database::DataBase *db)
 {
@@ -156,13 +155,12 @@ void indexBuilder::builder::run()
                 tmp_conn = this->db->mysql_conn_pool->get_conn(tmp_conn_id);
                 std::string tmp_inv_idx_path = get_inv_index_path(x.first, this->log, tmp_conn);
                 this->db->mysql_conn_pool->free_conn(tmp_conn_id);
-                t = new boost::thread(&worker, msg_obj, page_id, x.first,
-                                      tmp_inv_idx_path,
-                                      x.second, this->db, this->log);
+                std::cout << "x.first= " << x.first << std::endl;
+                t = new boost::thread(&worker, msg_obj, page_id, x.first, tmp_inv_idx_path, x.second, this->db, this->log);
                 work_threads.emplace_back(t);
 
                 // 同时执行5个线程
-                if (work_threads.size() == 1)
+                if (work_threads.size() == 16) // 5 or 1
                 {
                     for (auto tt : work_threads)
                         tt->join();
@@ -184,6 +182,7 @@ void indexBuilder::builder::run()
         {
             this->log->error(__LINE__, boost::lexical_cast<std::string>(e.what()));
         }
+        log->info(__LINE__, "end of run_function!");
     }
 }
 
@@ -193,10 +192,7 @@ void indexBuilder::builder::run()
  * @param inv_map 返回的倒排列表对象的映射
  * @param msg_obj 消息json对象指针
  */
-void indexBuilder::preprocess(
-    std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List>
-        &inv_map,
-    boost::json::object &msg_obj)
+void indexBuilder::preprocess(std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> &inv_map, boost::json::object &msg_obj)
 {
     boost::json::array arr[2];
     arr[0] = msg_obj.at("title").as_array();
@@ -211,11 +207,11 @@ void indexBuilder::preprocess(
     {
         for (boost::json::value item : ar)
         {
-            std::cout << "item as string" << std::endl;
-            std::cout << item.as_string() << std::endl;
+            //  std::cout << "item as string" << std::endl;
+            // std::cout << item.as_string() << std::endl;
 
             std::string str = boost::lexical_cast<std::string>(item);
-            std::cout << "item_str = " << str << "  len=" << str.length() << std::endl;
+            // std::cout << "item_str = " << str << " len=" << str.length() << std::endl;
 
             if (!inv_map.count(str)) // 当前网页还没有统计过这个key，创建倒排列表
             {
@@ -224,19 +220,18 @@ void indexBuilder::preprocess(
                 inv_map[str].page_set.insert(id);
             }
 
-            inv_map[str].list.emplace_back(
-                indexBuilder::InvertedIndex::list_node(id, offset));
+            inv_map[str].list.emplace_back(indexBuilder::InvertedIndex::list_node(id, offset));
 
             offset += str.length();
         }
     }
 
     // 对倒排列表进行排序
+    log_indexBuilder.info(__LINE__, "start sort inverted_list");
 
     for (const std::string &x : keys)
     {
-        std::sort(inv_map[x].list.begin(), inv_map[x].list.end(),
-                  indexBuilder::InvertedIndex::cmp_list_node);
+        std::sort(inv_map[x].list.begin(), inv_map[x].list.end(), indexBuilder::InvertedIndex::cmp_list_node);
     }
 }
 
@@ -255,38 +250,40 @@ void indexBuilder::worker(
 {
     int mysql_id;
     MYSQL *mysql_conn = NULL;
-
+    log_indexBuilder.warn(__LINE__, "key=" + key);
     if (path != "-1")
     {
         indexBuilder::InvertedIndex::InvertedIndex_List existsed_list;
 
         std::ifstream fin(path, std::ios::in);
         boost::archive::binary_iarchive ia(fin);
-        ia >> existsed_list;
+        ia >> existsed_list; // 从倒排文件中读取整个索引结构
         fin.close();
 
         // 先清空属于该网页的倒排索引
-        for (auto it = existsed_list.list.begin();
-             it != existsed_list.list.end();)
+        for (auto it = existsed_list.list.begin(); it != existsed_list.list.end();)
         {
             if (it->idWebPage == id)
                 it = existsed_list.list.erase(it);
             else
                 ++it;
         }
+
         if (existsed_list.page_set.count(id))
             existsed_list.page_set.erase(id);
 
         // 合并索引
-        // bug: 这里it_pre越界
         auto it_pre = pre_proc_list.list.begin();
-        for (auto it = existsed_list.list.begin(); it != existsed_list.list.end();
-             ++it)
+        for (auto it = existsed_list.list.begin(); it_pre != pre_proc_list.list.end() && it != existsed_list.list.end();)
         {
             if (indexBuilder::InvertedIndex::cmp_list_node(*it_pre, *it))
             {
-                existsed_list.list.insert(it, *it_pre);
+                it = existsed_list.list.insert(it, *it_pre);
                 ++it_pre;
+            }
+            else
+            {
+                ++it;
             }
         }
 
@@ -296,11 +293,11 @@ void indexBuilder::worker(
             ++it_pre;
         }
 
-        existsed_list.page_set.insert(id);
+        existsed_list.page_set.insert(id); // 网页的id已经爬
 
         // 创建新的倒排索引文件
         std::string opath = gen_invIndex_filepath(key);
-        std::ofstream fout(opath, std::ios::out);
+        std::ofstream fout(opath);
         boost::archive::binary_oarchive oa(fout);
         oa &existsed_list;
         fout.close();
@@ -318,7 +315,7 @@ void indexBuilder::worker(
         }
 
         mysql_autocommit(mysql_conn, OFF);
-        if (mysql_query(mysql_conn, sql.c_str()))
+        if (mysql_query(mysql_conn, sql.c_str())) // 查询失败？
         {
             log->error(__LINE__,
                        "mysql query failed. Message:" +
@@ -347,7 +344,6 @@ void indexBuilder::worker(
             "INSERT INTO InvertedIndexTable(InvertedIndexTable.key, path) "
             "VALUES('" +
             key + "', '" + opath + "');";
-
         while (true)
         {
             mysql_conn = db->mysql_conn_pool->get_conn(mysql_id);
@@ -357,6 +353,7 @@ void indexBuilder::worker(
                 usleep(100'0000); // 获取不到mysql conn， 100ms后重试
         }
 
+        log->warn(__LINE__, "begin sql query");
         if (mysql_query(mysql_conn, sql.c_str()))
         {
             log->error(__LINE__,
@@ -366,22 +363,31 @@ void indexBuilder::worker(
             db->mysql_conn_pool->free_conn(mysql_id);
             return;
         }
+        log->warn(__LINE__, "after sql query");
 
         // db->mysql_conn_pool->free_conn(mysql_id);
     }
 
+    log->warn(__LINE__, "before document");
     // 填写完全WebPage表
     std::string document = "", title = "";
     bj::array document_arr = msg_obj.at("content").as_array();
     bj::array title_arr = msg_obj.at("title").as_array();
 
+    log->warn(__LINE__, "before get document");
     // 获取document的全部内容
     for (auto &x : document_arr)
-        document += (bj::value_to<std::string>(x));
+    {
+        // log_indexBuilder.warn(__LINE__, "ast = " + boost::lexical_cast<std::string>(x.as_string()));
+        document += boost::lexical_cast<std::string>(x.as_string());
+    }
+    // log_indexBuilder.warn(__LINE__, "document = " + document);
 
+    log->warn(__LINE__, "before get title");
     // 获取title字符串
     for (auto &x : title_arr)
-        title += (bj::value_to<std::string>(x));
+        title += boost::lexical_cast<std::string>(x.as_string());
+    log_indexBuilder.warn(__LINE__, "title = " + title);
 
     std::string sql =
         "UPDATE WebPage SET document='" + document + "', title='" + title +
@@ -390,6 +396,7 @@ void indexBuilder::worker(
     mysql_autocommit(mysql_conn, ON);
     db->mysql_conn_pool->free_conn(mysql_id);
 
+    log_indexBuilder.warn(__LINE__, "worker done");
     // todo: 定时删除过期的倒排索引
 }
 
@@ -415,8 +422,7 @@ static std::string get_inv_index_path(const std::string &key,
 
     MYSQL_RES *res;
 
-    res =
-        mysql_store_result(mysql_conn); //  ???? 把查询到的信息存入MYSQL_RES变量
+    res = mysql_store_result(mysql_conn); //  ???? 把查询到的信息存入MYSQL_RES变量
     assert(res != NULL);
 
     MYSQL_ROW column;
@@ -437,11 +443,11 @@ static std::string get_inv_index_path(const std::string &key,
  * @param key 倒排索引的key
  * @return std::string 生成的路径
  */
-std::string indexBuilder::gen_invIndex_filepath(const std::string &key)
+std::string indexBuilder::gen_invIndex_filepath(const std::string key)
 {
     time_t t;
     time(&t);
-    
+
     return indexBuilder::invIndex_file_base_path +
            get_string_md5(key) + '_' +
            boost::lexical_cast<std::string>(t) + ".inv_idx";

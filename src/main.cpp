@@ -90,7 +90,7 @@ int main(int argc, char const *argv[])
     {
         std::cout << opts << std::endl;
     }
-    else if (vm.count("init-mysql"))
+    else if (vm.count("init-mysql"))  // init-mysql之前需要把sql文件从src里面复制到build里面去
         do_init_mysql();
 
     else if (vm.count("run-all"))

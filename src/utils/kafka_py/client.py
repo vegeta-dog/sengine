@@ -17,6 +17,7 @@ Group_ID = "GPID"    # 不同消费者设置了不同的分组名,不懂为什�
 Group_ID_2 = "GPID2"
 Group_ID_3 = "GPID3"
 
+# :todo 修改队列，限制大小
 
 class Producer(threading.Thread):
     def run(self):
