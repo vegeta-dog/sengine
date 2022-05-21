@@ -295,6 +295,9 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
   } 
   else  // url 在数据库中已存在
   {
+
+    // todo: 将已爬取的网页的Crawl设置为1
+
     // 先在redis中查询idWebPage
     log->info(__LINE__, "url在数据库中已经存在 update");
     std::string key = "WebPage:" + url;
