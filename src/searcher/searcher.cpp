@@ -45,13 +45,13 @@ void Searcher::run()
 void Searcher::do_start(Database::DataBase *db)
 {
     Searcher::searcher sc(db);
-    searhcer_objs.emplace_back(&sc);  // 这里存下来有什么用???
+    searhcer_objs.emplace_back(&sc);
     sc.run();
 }
 
 void Searcher::message_recv_from_WordSplit(kafka::clients::consumer::ConsumerRecord rec)
 {
-    recv_from_WS_queue.push(rec.value().toString());
+    recv_from_WS_queue.push(rec.value().se_toString());
 }
 
 Searcher::searcher::searcher(Database::DataBase *db)
@@ -86,6 +86,7 @@ void Searcher::searcher::run()
                     std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
                 continue;
             }
+            std::cerr << "msg=" + msg << std::endl;
 
             bj::value jv = bj::parse(msg);
             boost::json::object msg_obj = jv.as_object();
@@ -102,7 +103,9 @@ void Searcher::searcher::run()
             for (const auto &x : key_arr)
             {
                 ++key_arr_size;
-                auto key = bj::value_to<std::string>(x);
+                auto key = boost::lexical_cast<std::string>(x.as_string());
+                log->warn(__LINE__, "key=" + key);
+                std::cerr << "key=" + key << std::endl;
                 inv_map[key] = this->read_inv_index(key);
 
                 if (flag_init)
@@ -184,7 +187,7 @@ void Searcher::searcher::run()
             }
 
             // 输出结果
-            this->output_result(msg_obj.at("id").as_int64(), result_page_id_set);
+            this->output_result(boost::lexical_cast<std::string>(msg_obj.at("id").as_string()), result_page_id_set);
         }
         catch (const std::exception &e)
         {
@@ -204,10 +207,12 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
     int mysql_conn_id;
     MYSQL *mysql_conn = this->db->mysql_conn_pool->get_conn(mysql_conn_id);
 
-    std::string sql = "SELECT path FROM InvertedIndexTable WHERE key='" + key + "';";
+    std::string sql = "SELECT path FROM InvertedIndexTable WHERE InvertedIndexTable.key='" + key + "';";
     if (mysql_query(mysql_conn, sql.c_str()))
     {
-        log->error(__LINE__, "mysql query failed.");
+        log->error(__LINE__,
+                       "mysql query failed. Message:" +
+                           boost::lexical_cast<std::string>(mysql_error(mysql_conn)));
         this->db->mysql_conn_pool->free_conn(mysql_conn_id);
         throw "mysql query failed.";
     }
@@ -249,7 +254,7 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
  * @param req_id 用户请求的id
  * @param res_pid_set 最终文章的结果集
  */
-void Searcher::searcher::output_result(const unsigned int &req_id, std::set<unsigned int> &res_pid_set)
+void Searcher::searcher::output_result(const std::string &req_id, std::set<unsigned int> &res_pid_set)
 {
     int redis_conn_id;
     redisContext *redis_conn = this->db->redis_conn_pool->get_conn(redis_conn_id);
@@ -306,13 +311,12 @@ void Searcher::searcher::output_result(const unsigned int &req_id, std::set<unsi
     ret2api["objects"] = arr_ret2api;
     ret2api["timestamp"] = t;
 
-    
     // 输出json到redis
 
-    redisReply *reply = (redisReply *)redisCommand(redis_conn, ("SET req:" + boost::lexical_cast<std::string>(req_id) + " " + bj::serialize(ret2api)).c_str());
+    redisReply *reply = (redisReply *)redisCommand(redis_conn, ("SET search:" + (req_id) + " " + bj::serialize(ret2api)).c_str());
     if (reply == NULL)
     {
-        log->error(__LINE__, "redis error: msg: "+boost::lexical_cast<std::string>(reply->str));
+        log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(reply->str));
     }
     freeReplyObject(reply);
 
