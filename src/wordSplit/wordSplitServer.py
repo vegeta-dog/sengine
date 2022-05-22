@@ -21,7 +21,10 @@ server_host = ""  # kafka服务器地址
 # 写两个 con 两个 pro 一个分词类 五个线程
 
 def http_handler(message):
-    pass
+    print(message)
+    # print(message['raw'])
+    message['content'] = wordSplit.exact_wordcut(message['raw'])
+    to_index_que.put(message, block=True)
 
 
 def crawl_handler(message):
@@ -38,9 +41,9 @@ class WordSplitServer(multiprocessing.Process):
 
         logging.basicConfig(level=logging.WARNING)
         wordSplit.jieba_init()
-        http_receiver = client.Consumer(topics=[client.API_Topic], groupid=client.Group_ID, handler=http_handler, broker=server_host)
+        http_receiver = client.Consumer(topics=[client.topic_api_to_wordsplit], groupid=client.Group_ID, handler=http_handler, broker=server_host)
         crawl_receiver = client.Consumer(topics=[client.Pipe_Topic], groupid=client.Group_ID_3, handler=crawl_handler, broker=server_host)
-        to_index_producer = client.Producer(topic=client.Index_Topic, message_que=to_index_que, broker=server_host)
+        to_index_producer = client.Producer(topic=client.topic_to_searcher, message_que=to_index_que, broker=server_host)
         to_eva_producer = client.Producer(topic=client.Evaluator_Topic, message_que=to_eva_que, broker=server_host)  # 最后需要把URLTopic改称eva_Topic
         # 启动
         http_receiver.start()

@@ -8,10 +8,10 @@ server_host = ""  # none initialy
 
 Pipe_Topic = "Crawler2WordSplit"     # 爬虫与分词模块的通信topic
 # WordSplit_Topic = "WordSplit2Evaluator"    # WordSplit to Evaluator | not using 
-API_Topic = "API2WordSplit"     # 分词与API之间的通信topic
+topic_api_to_wordsplit = "API2WordSplit"     # 分词与API之间的通信topic
 Evaluator_Topic = "Crawler2Evaluator"    # 评估器与分词模块之间的通信topic
 URL_Topic = "Evaluator2Crawler"  # 评估器与爬虫之间的topic
-Index_Topic = "WordSplit2Searcher"    # 检索模块与分词模块的topic
+topic_to_searcher = "WordSplit2Searcher"    # 检索模块与分词模块的topic
 
 Group_ID = "GPID"    # 不同消费者设置了不同的分组名,不懂为什么topic不同还需要分组也不同
 Group_ID_2 = "GPID2"
