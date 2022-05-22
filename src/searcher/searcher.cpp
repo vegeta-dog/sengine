@@ -1,12 +1,12 @@
 #include "searcher.h"
 
 #include "../utils/configParser/configParser.h"
-#include "../utils/queue/queue.h"
 #include "../utils/kafka-cpp/kafka_client.h"
+#include "../utils/queue/queue.h"
 
+#include <boost/json.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
-#include <boost/json.hpp>
 
 namespace bj = boost::json;
 
@@ -14,6 +14,40 @@ static std::list<boost::thread *> threads;
 static std::list<Searcher::searcher *> searhcer_objs;
 
 static ThreadSafeQueue::queue<std::string> recv_from_WS_queue;
+
+/**
+ * @brief
+ *
+ * @param l
+ * @param r
+ * @return int
+ */
+static int randInt(int l, int r)
+{
+    static std::mt19937 eng(time(0) ^ 19937 ^ 998344353);
+    std::uniform_int_distribution<int> dis(l, r);
+    return dis(eng);
+}
+
+/**
+ * @brief 删除字符串前后的引号，使得数据合法
+ *
+ * @param item  原始字符串
+ * @return std::string
+ */
+static std::string remove_pre_suf_quote(const std::string &item)
+{
+    if (item.length() <= 2)
+        throw "can't normalize a empty string or item.length <= 2";
+    return item.substr(1, (int)item.length() - 2);
+}
+
+
+// use of 'auto' in parameter declaration only available with -fconcepts
+static std::string key_to_string(auto val)
+{
+    return remove_pre_suf_quote(boost::lexical_cast<std::string>(val.as_string()));
+}
 
 void Searcher::run()
 {
@@ -95,25 +129,29 @@ void Searcher::searcher::run()
 
             std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> inv_map;
 
-            int set_flag = 1; // set flag=1时插入ws1，否则插入ws0
-            bool flag_init = true;
-            std::set<unsigned int> working_set[2];
+            int set_flag = 1;                      // set flag=1时插入ws1，否则插入ws0
+            bool flag_init = true;                 // 是不是循环的第一次
+            std::set<unsigned int> working_set[2]; // 求交集
 
             unsigned int key_arr_size = 0;
             // 读取关键词的倒排列表,并求交集
             for (const auto &x : key_arr)
             {
-                
-                auto key = boost::lexical_cast<std::string>(x.as_string());
-                
+
+                auto key = remove_pre_suf_quote(boost::lexical_cast<std::string>(x.as_string()));
+
                 // 如果已经查过,就不需要重复查了
-                if (inv_map.count(key)) continue; 
+                if (inv_map.count(key))
+                    continue;
 
                 ++key_arr_size;
-                
-                log->warn(__LINE__, "key=" + key);
 
-                inv_map[key] = this->read_inv_index(key);
+                log->warn(__LINE__, "key=" + key);
+                auto inv_res = this->read_inv_index(key);
+
+                if (inv_res.list.empty())
+                    continue;
+                inv_map[key] = inv_res;
 
                 std::cerr << "get inv_index success!" << std::endl;
 
@@ -121,12 +159,11 @@ void Searcher::searcher::run()
                 {
                     flag_init = false;
                     working_set[0] = inv_map[key].page_set;
-
                     continue;
                 }
                 for (const auto &y : inv_map[key].page_set)
                 {
-                    if (working_set[(set_flag ? 0 : 1)].count(y))
+                    if (working_set[(set_flag ? 0 : 1)].count(y) || randInt(0, 100) % 5 == 0)
                     {
                         working_set[set_flag].insert(y);
                     }
@@ -135,10 +172,11 @@ void Searcher::searcher::run()
                 set_flag = (set_flag ? 0 : 1);
                 working_set[set_flag].clear();
             }
-            set_flag = (set_flag ? 0 : 1); // 最终具有所有关键词的页面的集合
+            set_flag ^= 1; // 最终具有所有关键词的页面的集合
 
             // ========= 提取页面的倒排结点 =========
             std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> inv_node_map; // 记得释放动态申请的list的内存
+            // inv_node_map: 把(所有'属于交集里面的页'的倒排节点)取出来, 目的是:降低后面的计算数据规模
 
             std::map<unsigned int, unsigned int> idWebPage_keycount_map; // 网页id——关键词总出现次数 映射
             // 提前将map中涉及到的项置零
@@ -147,35 +185,45 @@ void Searcher::searcher::run()
 
             for (const auto &x : key_arr)
             {
-                auto key = bj::value_to<std::string>(x);
+                auto key = remove_pre_suf_quote(boost::lexical_cast<std::string>(x.as_string()));
+
+                // 倒排链表
                 indexBuilder::InvertedIndex::InvertedIndex_List *ptr = &inv_map[key];
 
                 inv_node_map[key] = new std::list<indexBuilder::InvertedIndex::list_node *>;
 
-                for (auto &y : ptr->list)
+                for (auto &y : ptr->list)  // y是一个倒排节点
                 {
                     indexBuilder::InvertedIndex::list_node *p = &y;
                     if (working_set[set_flag].count(y.idWebPage))
                     {
                         inv_node_map[key]->emplace_back(p);
-                        ++idWebPage_keycount_map[y.idWebPage]; // 计算每个网页中，总匹配的关键词次数
+                        // 计算每个网页中，总匹配的关键词次数
+                        ++idWebPage_keycount_map[y.idWebPage];
                     }
                 }
             }
 
-            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its;     // inv_node_map中，每个key的倒排结点列表的当前搜索页面的base iterator（指向该页面的第一个node）
-            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its_end; // inv_node_map中，每个key的倒排结点列表的end迭代器
+            // inv_node_map中，每个key的倒排结点列表的当前搜索页面的base iterator（指向该页面的第一个node）
+            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its;
+            // inv_node_map中，每个key的倒排结点列表的end迭代器
+            std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> its_end;
             for (unsigned int i = 0; i < key_arr_size; ++i)
             {
-                its.emplace_back(inv_node_map[bj::value_to<std::string>(key_arr[i])]->begin());
-                its_end.emplace_back(inv_node_map[bj::value_to<std::string>(key_arr[i])]->end());
+                its.emplace_back(inv_node_map[key_to_string(key_arr[i])]->begin());
+                its_end.emplace_back(inv_node_map[key_to_string(key_arr[i])]->end());
             }
 
             std::set<unsigned int> result_page_id_set;
             // ========= 暴力搜索，查询是否存在按顺序的关键词关系 =====
+
+            const int match_delta = 50;  // 匹配间隔为50 ???
+
+            // 从页面的交集里面枚举页面id
             for (const auto &pid : working_set[set_flag])
             {
-                if (this->dfs_check_relationship(0, key_arr_size, pid, (*its[0])->offset, 3, inv_node_map, its, its_end))
+                // 传入pid, 查看这个页面是否
+                if (this->dfs_check_relationship(0, key_arr_size, pid, 0, match_delta, inv_node_map, its, its_end))
                 {
                     // 当前网页能够被加入结果集
                     result_page_id_set.insert(pid);
@@ -184,19 +232,18 @@ void Searcher::searcher::run()
                 // 将所有的迭代器指向下一个网页
                 for (unsigned int i = 0; i < key_arr_size; ++i)
                 {
-                    while ((*its[i])->idWebPage == pid)
+                    while (its[i] != its_end[i] && (*its[i])->idWebPage == pid)
                         ++(its[i]);
                 }
             }
 
             // 释放inv_node_map的动态申请的内存
             for (auto &x : inv_node_map)
-            {
                 free(x.second);
-            }
 
             // 输出结果
-            this->output_result(boost::lexical_cast<std::string>(msg_obj.at("id").as_string()), result_page_id_set);
+            std::string query_str_id = key_to_string(msg_obj.at("id"));
+            this->output_result(query_str_id, result_page_id_set);
         }
         catch (const std::exception &e)
         {
@@ -206,27 +253,96 @@ void Searcher::searcher::run()
 }
 
 /**
+ * @brief 采用dfs来检查待选网页集合
+ *
+ * @param key_num 当前正在处理的关键词的序号
+ * @param key_arr_size 最大关键词序号
+ * @param idWebPage 当前正在处理的网页号
+ * @param base_offset 基础offset
+ * @param max_delta 关键词之间的最大间隔值
+ * @param inv_node_map 备选倒排索引结点map
+ * @param its 备选倒排索引列表迭代器数组
+ * @param its_end 备选单词的倒排索引列表的end()迭代器数组
+ * @return true 该网页符合要求
+ * @return false 该网页不符合要求
+ */
+bool Searcher::searcher::dfs_check_relationship(
+    const unsigned int &key_num,
+    const unsigned int &key_arr_size,
+    const unsigned int &idWebPage,
+    const unsigned int &base_offset,
+    const unsigned int &max_delta, 
+    std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> &inv_node_map, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its,
+    std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its_end)
+{
+    if (key_num >= key_arr_size)
+    {
+        auto it = its[key_num - 1];
+        // 将当前的指针移动到下一个page (避免重复枚举到一个page)
+        while ((it != its_end[key_num - 1]) && (*it)->idWebPage == idWebPage)
+            ++it;
+
+        its[key_num - 1] = it; // 这里是存储最后一个its吗 ？
+        return true;
+    }
+
+    auto it = its[key_num];
+
+    while ((it != its_end[key_num]) && ((*it)->idWebPage == idWebPage))
+    {
+        if (key_num == 0 || abs((long long)((*it)->offset - base_offset)) <= max_delta)
+        {
+
+            if (dfs_check_relationship(key_num + 1, key_arr_size, idWebPage, (*it)->offset, max_delta, inv_node_map, its, its_end))
+                return true;
+            else
+            {
+                // 将当前的指针移动到下一个page
+                while ((*it)->idWebPage == idWebPage && (it != its_end[key_num]))
+                    ++it;
+
+                its[key_num] = it;
+                return false;
+            }
+        } else {
+            ++it;
+        }
+    }
+
+    // 将当前的指针移动到下一个page
+    while ((it != its_end[key_num]) && (*it)->idWebPage == idWebPage)
+        ++it;
+
+    its[key_num] = it;
+    return false;
+}
+
+
+/**
  * @brief 读取倒排索引文件
  *
  * @param key 关键字
  * @return indexBuilder::InvertedIndex::InvertedIndex_List
  */
-indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_index(const std::string &key)
+indexBuilder::InvertedIndex::InvertedIndex_List // return 一个 list
+Searcher::searcher::read_inv_index(const std::string &key)
 {
+    // 返回的list
+    indexBuilder::InvertedIndex::InvertedIndex_List inv_list;
+
     std::cerr << "inside head of read_inv_index" << std::endl;
 
     int mysql_conn_id;
     MYSQL *mysql_conn = this->db->mysql_conn_pool->get_conn(mysql_conn_id);
 
     std::string sql = "SELECT path FROM InvertedIndexTable WHERE InvertedIndexTable.key='" + key + "';";
-    
+
     std::cerr << "start sql query!" << std::endl;
-    
+
     if (mysql_query(mysql_conn, sql.c_str()))
     {
-        log->error(__LINE__,
-                       "mysql query failed. Message:" +
-                           boost::lexical_cast<std::string>(mysql_error(mysql_conn)));
+        log->error(__LINE__, "mysql query failed. Message:" +
+                                 boost::lexical_cast<std::string>(mysql_error(mysql_conn)));
         this->db->mysql_conn_pool->free_conn(mysql_conn_id);
         throw "mysql query failed.";
     }
@@ -241,11 +357,16 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
 
     std::cerr << "mysql store result ok!" << std::endl;
 
-    if (mysql_affected_rows(mysql_conn) != 1)
+    int rows = mysql_affected_rows(mysql_conn);
+    if (rows > 1)
     {
-        log->error(__LINE__, "mysql affectedlines != 1.");
+        log->error(__LINE__, "mysql affectedlines != 1. affects:" + boost::lexical_cast<std::string>(mysql_affected_rows(mysql_conn)));
         this->db->mysql_conn_pool->free_conn(mysql_conn_id);
         throw "mysql affectedlines != 1.";
+    }
+    else if (rows == 0) // 没有索引
+    {
+        return inv_list;
     }
 
     std::cerr << "start mysql fetch row !" << std::endl;
@@ -256,13 +377,12 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
         path = boost::lexical_cast<std::string>(column[0]);
     }
 
-
-    if (path.empty()) {
+    if (path.empty())
+    {
         throw "path can't be empty!";
     }
 
     // 读取倒排列表
-    indexBuilder::InvertedIndex::InvertedIndex_List inv_list;
 
     std::ifstream fin(path, std::ios::in);
     boost::archive::binary_iarchive ia(fin);
@@ -326,6 +446,12 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
         while (column = mysql_fetch_row(res))
         {
             bj::object tmp;
+
+            std::cerr << sizeof(column) << std::endl;
+            std::cerr << "column[0] = " << column[0] << std::endl;
+            std::cerr << "column[1] = " << column[1] << std::endl;
+
+
             tmp["title"] = column[1];
             tmp["url"] = column[2];
             tmp["summary"] = column[0];
@@ -360,60 +486,4 @@ unsigned int Searcher::get_Searcher_id()
 
     mtx_Searcher_id.unlock();
     return ret;
-}
-
-/**
- * @brief 采用dfs来检查待选网页集合
- *
- * @param key_num 当前正在处理的关键词的序号
- * @param key_arr_size 最大关键词序号
- * @param idWebPage 当前正在处理的网页号
- * @param base_offset 基础offset
- * @param max_delta 关键词之间的最大间隔值
- * @param inv_node_map 备选倒排索引结点map
- * @param its 备选倒排索引列表迭代器数组
- * @param its_end 备选单词的倒排索引列表的end()迭代器数组
- * @return true 该网页符合要求
- * @return false 该网页不符合要求
- */
-bool Searcher::searcher::dfs_check_relationship(const unsigned int &key_num, const unsigned int &key_arr_size, const unsigned int &idWebPage, const unsigned int &base_offset, const unsigned int &max_delta, std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> &inv_node_map, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its_end)
-{
-    if (key_num >= key_arr_size)
-    {
-        auto it = its[key_num - 1];
-        // 将当前的指针移动到下一个page
-        while ((*it)->idWebPage == idWebPage && (it != its_end[key_num - 1]))
-            ++it;
-
-        its[key_num - 1] = it;
-        return true;
-    }
-
-    auto it = its[key_num];
-
-    while ((it != its_end[key_num]) && ((*it)->idWebPage == idWebPage))
-    {
-        if (abs((long long)((*it)->offset - base_offset)) <= max_delta)
-        {
-
-            if (dfs_check_relationship(key_num + 1, key_arr_size, idWebPage, (*it)->offset, max_delta, inv_node_map, its, its_end))
-                return true;
-            else
-            {
-                // 将当前的指针移动到下一个page
-                while ((*it)->idWebPage == idWebPage && (it != its_end[key_num]))
-                    ++it;
-
-                its[key_num] = it;
-                return false;
-            }
-        }
-    }
-
-    // 将当前的指针移动到下一个page
-    while ((*it)->idWebPage == idWebPage && (it != its_end[key_num]))
-        ++it;
-
-    its[key_num] = it;
-    return false;
 }

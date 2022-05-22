@@ -72,7 +72,7 @@ def webapi():
             time.sleep(0.1)
             res = redis_client.get("search:"+hash_mark)
             if res:
-                return
+                return str(res)
         # 超时未返回数据，404
         abort(404)
 
