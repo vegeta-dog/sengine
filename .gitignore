@@ -44,3 +44,4 @@ cmake-build-debug/
 /src/.idea/
 
 *.pyc
+/src/webapi/log_webapi.py.txt
