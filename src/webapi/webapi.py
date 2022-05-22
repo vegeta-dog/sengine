@@ -1,14 +1,20 @@
+import queue
+
+import flask
+import time
 import redis
 import kafka
 import datetime
 import hashlib
-from flask import Flask, request
+from flask import Flask, request, Response, abort
 
 from utils.kafka_py import client
+from utils.configParser import load_config
+from utils.exception import *
+import utils.logger as log
+
 
 webapi_app = Flask("sEngine_webapi")
-redis_host = "localhost"
-redis_port = 6379
 
 
 def encodeMD5(s):
@@ -20,44 +26,71 @@ def encodeMD5(s):
 
 @webapi_app.route('/', methods=['POST', 'GET'])
 def webapi():
-    if request.method != 'POST':
-        return "<strong>This is sEngine webapi, please use POST method to visit!</strong>"
 
-    # 请求中没有json数据
-    if not request.json:
-        return "<strong>Error: The post body doesn't has a json data in it!</strong>"
+    try:
+        if request.method != 'POST':
+            return "<strong>This is sEngine webapi, please use POST method to visit!</strong>"
 
-    if 'command' not in request.json:
-        return "<strong>Error: No command in json.</strong>"
+        # 请求中没有json数据
+        if not request.json:
+            return "<strong>Error: The post body doesn't has a json data in it!</strong>"
 
-    # 读取要搜索的关键词
-    if request.json['command'] == 'search':
-        kw = request.json['keyword']
-        # todo:接下来需要调用检索器
+        if 'command' not in request.json:
+            return "<strong>Error: No command in json.</strong>"
 
-    value = 从前端获取的字符串
+        # 读取要搜索的关键词
+        if request.json['command'] == 'search':
+            kw = request.json['keyword']
+        else:
+            raise ParameterError("command不等于 search")
 
-    hash_mark = encodeMD5(value)
+        hash_mark = encodeMD5(kw)
 
-    if redis_client.get(hash_mark) != None:
-        return flask
+        res = redis_client.get("search:"+hash_mark)
+        if res:
+            return res
 
-    message = dict()
-    message['id'] = hash_mark
-    message['raw'] = value
-    message['timestamp'] = str(datetime.datetime.timestamp(datetime.datetime.now()))
+        message = dict()
+        message['id'] = hash_mark
+        message['raw'] = kw
+        message['timestamp'] = str(datetime.datetime.timestamp(datetime.datetime.now()))
 
-    global HTTP_request_que
-    HTTP_request_que.put(message, block=True)
+        global HTTP_request_que
+        HTTP_request_que.put(message, block=True)
+        print("message : ", message)
 
-    while True:
-        time.sleep(0.1)
-        if redis_client.get(hash_mark) != None:
-            return
+        expire_time = 30
+        while expire_time:
+            expire_time -= 1
+            time.sleep(0.1)
+            res = redis_client.get("search:"+hash_mark)
+            if res:
+                return
+        # 超时未返回数据，404
+        abort(404)
+
+    except ParameterError as e:
+        log.log_traceback(e)
+        abort(500)
+
 
 
 if __name__ == '__main__':
+    config = load_config()
+    log.init_log("log_webapi.py.txt")
+
+    HTTP_request_que = queue.Queue()  # producer to wordsplit
+    redis_client = redis.StrictRedis(host=config['redis_host'], port=config['redis_port'],
+                                     password=config['redis_password'])
+    # 新建一个进程吃
+    # proc_pool = multiprocessing.dummy.Pool(processes=128)
+
+    API_producer = client.Producer(client.topic_api_to_wordsplit, message_que=HTTP_request_que, broker=config['kafka_brokers'])
+    API_producer.start()
+    # 将api producer加入线程池
+    # proc_pool.apply_async(API_producer.run, args=())
+
     webapi_app.run(port=56666)
-    HTTP_request_que = queue.Queue()
-    redis_client = redis.StrictRedis(host=redis_host, port=redis_port)
-    API_producer = client.Producer(client.API_Topic, message_que=HTTP_request_que)
+
+    API_producer.join()
+
