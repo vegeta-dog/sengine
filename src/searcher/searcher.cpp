@@ -22,12 +22,12 @@ void Searcher::run()
 
     std::string str;
     configParser::get_config("Searcher.Searcher_num", &str);
-    unsigned int indexBuilder_num = boost::lexical_cast<int>(str);
+    unsigned int searcher_num = boost::lexical_cast<int>(str);
 
     boost::thread *t;
     Searcher::searcher *searcher_ptr;
 
-    for (unsigned int i = 0; i < indexBuilder_num; ++i)
+    for (unsigned int i = 0; i < searcher_num; ++i)
     {
         t = new boost::thread(&Searcher::do_start, &db);
         threads.emplace_back(t);
@@ -81,16 +81,17 @@ void Searcher::searcher::run()
             catch (int e)
             {
                 if (e == -1)
-                    usleep(100);
+                    usleep(100'000);
                 else
                     std::cerr << "At line " << __LINE__ << ": unexpected exception" << std::endl;
                 continue;
             }
-            std::cerr << "msg=" + msg << std::endl;
 
             bj::value jv = bj::parse(msg);
             boost::json::object msg_obj = jv.as_object();
             boost::json::array key_arr = msg_obj.at("content").as_array();
+
+            std::cout << jv << std::endl;
 
             std::map<std::string, indexBuilder::InvertedIndex::InvertedIndex_List> inv_map;
 
@@ -102,11 +103,19 @@ void Searcher::searcher::run()
             // 读取关键词的倒排列表,并求交集
             for (const auto &x : key_arr)
             {
-                ++key_arr_size;
+                
                 auto key = boost::lexical_cast<std::string>(x.as_string());
+                
+                // 如果已经查过,就不需要重复查了
+                if (inv_map.count(key)) continue; 
+
+                ++key_arr_size;
+                
                 log->warn(__LINE__, "key=" + key);
-                std::cerr << "key=" + key << std::endl;
+
                 inv_map[key] = this->read_inv_index(key);
+
+                std::cerr << "get inv_index success!" << std::endl;
 
                 if (flag_init)
                 {
@@ -204,10 +213,15 @@ void Searcher::searcher::run()
  */
 indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_index(const std::string &key)
 {
+    std::cerr << "inside head of read_inv_index" << std::endl;
+
     int mysql_conn_id;
     MYSQL *mysql_conn = this->db->mysql_conn_pool->get_conn(mysql_conn_id);
 
     std::string sql = "SELECT path FROM InvertedIndexTable WHERE InvertedIndexTable.key='" + key + "';";
+    
+    std::cerr << "start sql query!" << std::endl;
+    
     if (mysql_query(mysql_conn, sql.c_str()))
     {
         log->error(__LINE__,
@@ -217,11 +231,15 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
         throw "mysql query failed.";
     }
 
+    std::cerr << "sql query ok" << std::endl;
+
     MYSQL_RES *res;
 
     res = mysql_store_result(mysql_conn);
 
     MYSQL_ROW column;
+
+    std::cerr << "mysql store result ok!" << std::endl;
 
     if (mysql_affected_rows(mysql_conn) != 1)
     {
@@ -230,10 +248,17 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
         throw "mysql affectedlines != 1.";
     }
 
+    std::cerr << "start mysql fetch row !" << std::endl;
+
     std::string path;
     while (column = mysql_fetch_row(res))
     {
         path = boost::lexical_cast<std::string>(column[0]);
+    }
+
+
+    if (path.empty()) {
+        throw "path can't be empty!";
     }
 
     // 读取倒排列表
@@ -243,6 +268,8 @@ indexBuilder::InvertedIndex::InvertedIndex_List Searcher::searcher::read_inv_ind
     boost::archive::binary_iarchive ia(fin);
     ia >> inv_list;
     fin.close();
+
+    std::cerr << "OK ! return from read_inv_index" << std::endl;
 
     this->db->mysql_conn_pool->free_conn(mysql_conn_id);
     return inv_list;

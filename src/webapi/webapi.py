@@ -1,5 +1,6 @@
 import queue
-
+import sys
+import os
 import flask
 import time
 import redis
@@ -8,8 +9,11 @@ import datetime
 import hashlib
 from flask import Flask, request, Response, abort
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
+
 from utils.kafka_py import client
-from utils.configParser import load_config
+from utils.configParser.configParser import load_config
 from utils.exception import *
 import utils.logger as log
 
@@ -39,10 +43,13 @@ def webapi():
             return "<strong>Error: No command in json.</strong>"
 
         # 读取要搜索的关键词
+        kw = ""
         if request.json['command'] == 'search':
             kw = request.json['keyword']
         else:
             raise ParameterError("command不等于 search")
+
+        print("kw = " + kw)
 
         hash_mark = encodeMD5(kw)
 

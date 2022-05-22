@@ -22,8 +22,10 @@ server_host = ""  # kafka服务器地址
 
 def http_handler(message):
     print(message)
-    # print(message['raw'])
     message['content'] = wordSplit.exact_wordcut(message['raw'])
+    message['content'] += wordSplit.search_wordcut(message['raw'])
+    message['content'].append(message['raw'])
+    print("content = ", message['content'])
     to_index_que.put(message, block=True)
 
 

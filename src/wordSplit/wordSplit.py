@@ -16,7 +16,7 @@ def normalize(word):  # 规格化
 def exact_wordcut(sentence_list):
     word_list = []
     for sentence in sentence_list:
-        for word in jieba.cut(sentence):
+        for word in jieba.cut(sentence, HMM=True):
             word = normalize(word)
             if word == "":
                 continue
@@ -27,7 +27,7 @@ def exact_wordcut(sentence_list):
 def token_wordcut(sentence_list, topK=5000):
     word_list = []
     for sentence in sentence_list:
-        for word in textrank(sentence, topK=topK):
+        for word in textrank(sentence, topK=topK, HMM=True):
             word = normalize(word)
             if word == "":
                 continue
