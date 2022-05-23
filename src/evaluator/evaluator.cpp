@@ -329,11 +329,29 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int 
         log->error(__LINE__, "mysql query failed. Message:" +
                                  boost::lexical_cast<std::string>(
                                      mysql_error(this->mysql_conn)));
-        ret = -1;
         mysql_rollback(this->mysql_conn);
+
+        throw "mysql query failed. Message:" +
+            boost::lexical_cast<std::string>(mysql_error(this->mysql_conn));
       }
       else
-        ret = mysql_insert_id(this->mysql_conn);
+      {
+          // 获取前面插入的这条数据的idWebPage
+          sprintf(sql, "SELECT LAST_INSERT_ID();");
+          mysql_query(this->mysql_conn, sql);
+          MYSQL_RES *res;
+
+          res = mysql_store_result(this->mysql_conn);
+          assert(res != NULL);
+
+          MYSQL_ROW column;
+
+          assert(mysql_affected_rows(this->mysql_conn) == 1);
+          while (column = mysql_fetch_row(res))
+          {
+            ret = boost::lexical_cast<int>(column[0]);
+          }
+      }
     }
     catch (const std::exception &e)
     {
@@ -478,15 +496,13 @@ void Evaluator::evaluator::run()
         create_LinkRecord(from_page_id, to_page_id);
 
         // 暂时把所有的url都发回爬虫
-        std::cout << "before" << std::endl;
         boost::json::object to_crawler;
         to_crawler["url"] = x;
 
         send2Crawler_queue.push(boost::json::serialize(to_crawler));
-        std::cout << "after" << std::endl;
       }
 
-      std::cout << "fuck you 2" << std::endl;
+
 
       // 填写count_total_link_to
       std::string sql =
@@ -538,17 +554,17 @@ void Evaluator::evaluator::run()
       mysql_autocommit(this->mysql_conn, OFF);
       if (title.length() >= 48)
         title = libUTF::substr_utf(title, 0, 48);
-      
+
       std::cerr << "doc = " << document << std::endl;
-      
-      if (document.length() >= 110)
-        document = libUTF::substr_utf(document, 0, 110);
+
+      if (document.length() >= 500)
+        document = libUTF::substr_utf(document, 0, 500);
 
       sql = "UPDATE WebPage SET title='" + title + "', document='" + document + "', Crawl=1 WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
       if (mysql_query(this->mysql_conn, sql.c_str()))
       {
         this->log->error(__LINE__, "mysql query failed.Message: " + boost::lexical_cast<std::string>(mysql_error(this->mysql_conn)));
-        
+
         std::cerr << "document_left : " << libUTF::substr_utf(document, 0, 110) << std::endl;
         mysql_rollback(this->mysql_conn);
         mysql_autocommit(this->mysql_conn, ON);
