@@ -7,8 +7,9 @@ aux_source_directory(. DIR_SRCS)
 include_directories(./configParser)
 include_directories(./logger)
 include_directories(./kafka-cpp)
+include_directories(./utf)
 
 add_subdirectory(configParser)
 add_subdirectory(logger)
+add_subdirectory(utf)
 add_subdirectory(kafka-cpp)
-
