@@ -7,6 +7,7 @@
 #include <boost/json.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
+#include <base64/base64.h>
 
 namespace bj = boost::json;
 
@@ -318,10 +319,6 @@ bool Searcher::searcher::dfs_check_relationship(
         }
     }
 
-    // 将当前的指针移动到下一个page
-    while ((it != its_end[key_num]) && (*it)->idWebPage == idWebPage)
-        ++it;
-
     its[key_num] = it;
     return false;
 }
@@ -484,14 +481,20 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
 
     // 输出json到redis
     std::stringstream redis_cmd;
-    redis_cmd << "SET search:" << (req_id) << " \"" << Database::translate_quote_for_redis(bj::serialize(ret2api)) << "\"";
+    // bug: 这里的结果需要更改为base64编码
 
+    std::string b64_result = libBase64::encode(bj::serialize(ret2api));
+    std::cout << "b64_result= " << b64_result << std::endl;
+
+    redis_cmd << "SET search:" << (req_id) << " " << b64_result;
+    std::cout << redis_cmd.str() << std::endl;
     redisReply *reply = (redisReply *)redisCommand(redis_conn, redis_cmd.str().c_str());
     if (reply == NULL)
     {
         std::cerr << "redis_command=  " << redis_cmd.str().c_str() << std::endl;
-        log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(reply->str));
+        log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(redis_conn->errstr));
     }
+    // std::cout<< "redis_result="<< rep  ly->str<<std::endl;
     freeReplyObject(reply);
 
     this->db->mysql_conn_pool->free_conn(mysql_conn_id);
