@@ -261,10 +261,15 @@ void Searcher::searcher::run()
  * @param base_offset 基础offset
  * @param max_delta 关键词之间的最大间隔值
  * @param inv_node_map 备选倒排索引结点map
- * @param its 备选倒排索引列表迭代器数组
+ * @param its 备选倒排索引列表迭代器数组 (its[i]是第i个关键字的倒排列表)
  * @param its_end 备选单词的倒排索引列表的end()迭代器数组
  * @return true 该网页符合要求
  * @return false 该网页不符合要求
+ * 
+ * dfs实现思路: 
+ * 1. 从第0个关键字开始枚举到第key_size-1个关键字
+ * 2. 
+ * 
  */
 bool Searcher::searcher::dfs_check_relationship(
     const unsigned int &key_num,
@@ -450,6 +455,7 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
             std::cerr << sizeof(column) << std::endl;
             std::cerr << "column[0] = " << column[0] << std::endl;
             std::cerr << "column[1] = " << column[1] << std::endl;
+            std::cerr << "column[2] = " << column[2] << std::endl;
 
 
             tmp["title"] = column[1];
