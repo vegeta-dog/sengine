@@ -46,6 +46,14 @@ namespace Database {
      * @return
      */
     int init_mysql(DataBase &db);
+
+    /**
+     * @brief 将redis命令中的引号进行转义
+     * 
+     * @param x 源字符串
+     * @return std::string  转义后的结果
+     */
+    std::string translate_quote_for_redis(const std::string &x);
 }
 
 

@@ -39,9 +39,12 @@ static std::string remove_pre_suf_quote(const std::string &item)
 {
     if (item.length() <= 2)
         throw "can't normalize a empty string or item.length <= 2";
-    return item.substr(1, (int)item.length() - 2);
-}
 
+    if (item[0] == '\"' && item[item.length() - 1] == '\"')
+        return item.substr(1, (int)item.length() - 2);
+    else
+        return item;
+}
 
 // use of 'auto' in parameter declaration only available with -fconcepts
 static std::string key_to_string(auto val)
@@ -192,7 +195,7 @@ void Searcher::searcher::run()
 
                 inv_node_map[key] = new std::list<indexBuilder::InvertedIndex::list_node *>;
 
-                for (auto &y : ptr->list)  // y是一个倒排节点
+                for (auto &y : ptr->list) // y是一个倒排节点
                 {
                     indexBuilder::InvertedIndex::list_node *p = &y;
                     if (working_set[set_flag].count(y.idWebPage))
@@ -217,7 +220,7 @@ void Searcher::searcher::run()
             std::set<unsigned int> result_page_id_set;
             // ========= 暴力搜索，查询是否存在按顺序的关键词关系 =====
 
-            const int match_delta = 50;  // 匹配间隔为50 ???
+            const int match_delta = 50; // 匹配间隔为50 ???
 
             // 从页面的交集里面枚举页面id
             for (const auto &pid : working_set[set_flag])
@@ -271,7 +274,7 @@ bool Searcher::searcher::dfs_check_relationship(
     const unsigned int &key_arr_size,
     const unsigned int &idWebPage,
     const unsigned int &base_offset,
-    const unsigned int &max_delta, 
+    const unsigned int &max_delta,
     std::map<std::string, std::list<indexBuilder::InvertedIndex::list_node *> *> &inv_node_map, std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its,
     std::vector<std::list<indexBuilder::InvertedIndex::list_node *>::iterator> &its_end)
 {
@@ -304,7 +307,9 @@ bool Searcher::searcher::dfs_check_relationship(
                 its[key_num] = it;
                 return false;
             }
-        } else {
+        }
+        else
+        {
             ++it;
         }
     }
@@ -316,7 +321,6 @@ bool Searcher::searcher::dfs_check_relationship(
     its[key_num] = it;
     return false;
 }
-
 
 /**
  * @brief 读取倒排索引文件
@@ -448,13 +452,23 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
             bj::object tmp;
 
             std::cerr << sizeof(column) << std::endl;
-            std::cerr << "column[0] = " << column[0] << std::endl;
-            std::cerr << "column[1] = " << column[1] << std::endl;
+            // std::cerr << "column[0] = " << column[0] << std::endl;
+            // std::cerr << "column[1] = " << column[1] << std::endl;
+            // URL为空
+            if (column[2] == NULL)
+                continue;
 
-
-            tmp["title"] = column[1];
             tmp["url"] = column[2];
-            tmp["summary"] = column[0];
+            if (column[1] == NULL)
+                tmp["title"] = "title";
+            else
+                tmp["title"] = column[1];
+
+            if (column[0] == NULL)
+                tmp["summary"] = "summary";
+            else
+                tmp["summary"] = column[0];
+
             arr_ret2api.emplace_back(tmp);
         }
     }
@@ -465,10 +479,15 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
     ret2api["timestamp"] = t;
 
     // 输出json到redis
+    std::stringstream redis_cmd;
+    redis_cmd << "SET search:" << (req_id) << " \""<<Database::translate_quote_for_redis(bj::serialize(ret2api)) <<"\"";
 
-    redisReply *reply = (redisReply *)redisCommand(redis_conn, ("SET search:" + (req_id) + " " + bj::serialize(ret2api)).c_str());
+    
+
+    redisReply *reply = (redisReply *)redisCommand(redis_conn, redis_cmd.str().c_str());
     if (reply == NULL)
     {
+        std::cerr <<"redis_command=  "<<redis_cmd.str().c_str()<<std::endl;
         log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(reply->str));
     }
     freeReplyObject(reply);

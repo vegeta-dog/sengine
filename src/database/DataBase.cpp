@@ -15,7 +15,8 @@
 
 logging::logger log_DataBase("DataBase");
 
-Database::DataBase::~DataBase() {
+Database::DataBase::~DataBase()
+{
 
     log_DataBase.debug(__LINE__, "Database object destructed.");
 
@@ -24,7 +25,8 @@ Database::DataBase::~DataBase() {
     this->redis_conn_pool->~redis_pool();
 }
 
-Database::DataBase::DataBase() {
+Database::DataBase::DataBase()
+{
     log_DataBase.info(__LINE__, "Initializing DataBase Object...");
 
     std::string str_data;
@@ -52,7 +54,6 @@ Database::DataBase::DataBase() {
     configParser::get_config("DataBase.redis_port", &str_data);
     this->redis_port = boost::lexical_cast<int>(str_data);
 
-
     configParser::get_config("DataBase.redis_password", &str_data);
     this->redis_password = str_data;
 
@@ -66,7 +67,8 @@ Database::DataBase::DataBase() {
     errcode = this->mysql_conn_pool->init(this->mysql_host, this->mysql_port, this->mysql_max_conn_num,
                                           this->mysql_username,
                                           this->mysql_password, this->mysql_database_name);
-    if (errcode) {
+    if (errcode)
+    {
         char code[128];
         sprintf(code, "Failed to create mysql conn pool. code: %d", errcode);
         log_DataBase.error(__LINE__, code);
@@ -79,7 +81,8 @@ Database::DataBase::DataBase() {
 
     errcode = this->redis_conn_pool->init(this->redis_host, boost::lexical_cast<int>(this->redis_port),
                                           boost::lexical_cast<int>(this->redis_max_conn_num), this->redis_password);
-    if (errcode) {
+    if (errcode)
+    {
         char code[128];
         sprintf(code, "Failed to create redis conn pool. code: %d", errcode);
         log_DataBase.error(__LINE__, code);
@@ -91,7 +94,8 @@ Database::DataBase::DataBase() {
  * 初始化mysql数据库的数据表
  * @return 错误码
  */
-int Database::init_mysql(DataBase &db) {
+int Database::init_mysql(DataBase &db)
+{
     int conn_id;
     MYSQL *conn = db.mysql_conn_pool->get_conn(conn_id);
 
@@ -112,43 +116,70 @@ int Database::init_mysql(DataBase &db) {
 
     int js = -1;
     std::string sql_to_exec = "";
-    for (std::string s: sql) {
+    for (std::string s : sql)
+    {
 
         ++js;
-        if (!s.empty()) {
+        if (!s.empty())
+        {
 
             // 拼接sql语句
-            if (s[s.length() - 1] != ';' && s[0] != '-' && s[1] != '-') {
+            if (s[s.length() - 1] != ';' && s[0] != '-' && s[1] != '-')
+            {
                 sql_to_exec += s + ' ';
                 continue;
-            } else if (s[s.length() - 1] == ';')
+            }
+            else if (s[s.length() - 1] == ';')
                 sql_to_exec += s;
-            else continue;
+            else
+                continue;
 
-            if (mysql_query(conn, sql_to_exec.c_str())) {
+            if (mysql_query(conn, sql_to_exec.c_str()))
+            {
                 // 处理出错
                 flag_error = true;
                 break;
             }
 
             sql_to_exec = "";
-
         }
     }
 
     // 处理出错
-    if (flag_error) {
+    if (flag_error)
+    {
         char buf[256];
         sprintf(buf, "An error occurred while creating MySQL data table. At Line %d", js);
         log_DataBase.error(__LINE__, buf);
         // 数据回滚
         mysql_rollback(conn);
         exit(0);
-    } else mysql_commit(conn);
+    }
+    else
+        mysql_commit(conn);
 
     // 重新开启自动提交
     mysql_autocommit(conn, ON);
 
     log_DataBase.info(__LINE__, "Successfully created sEngine Data tables!");
     return SUCCESS;
+}
+
+/**
+ * @brief 将redis命令中的引号进行转义
+ *
+ * @param x 源字符串
+ * @return std::string  转义后的结果
+ */
+std::string Database::translate_quote_for_redis(const std::string &x)
+{
+    std::string ret = "";
+    for(auto &k:x)
+    {
+        if(k == '\"')
+            ret += "\\";
+        ret += k;
+    }
+    
+    return ret;
 }
