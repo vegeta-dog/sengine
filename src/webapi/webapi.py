@@ -28,6 +28,22 @@ def encodeMD5(s):
     return m.hexdigest()
 
 
+def restore_json_string(s):
+    """
+    还原在searcher中，对引号进行转义的结果字符串
+    :param s:从redis获取到的的字符串
+    :return:
+    """
+    ret = ""
+    for x in range(0, len(s)-1):
+        if s[x] == '\\' and s[x+1] == '"':
+            continue
+        ret += s[x]
+    ret += s[-1]
+    return ret
+
+
+
 @webapi_app.route('/', methods=['POST', 'GET'])
 def webapi():
 
@@ -50,11 +66,18 @@ def webapi():
             raise ParameterError("command不等于 search")
 
         print("kw = " + kw)
+        if kw is None or kw == "":
+            abort(404)
 
         hash_mark = encodeMD5(kw)
 
         res = redis_client.get("search:"+hash_mark)
         if res:
+            res = restore_json_string(res.decode())
+            # 去除首尾的引号
+            print(res)
+            res = res[1:-1]
+            print(res)
             return res
 
         message = dict()
@@ -72,7 +95,11 @@ def webapi():
             time.sleep(0.1)
             res = redis_client.get("search:"+hash_mark)
             if res:
-                return str(res)
+                res = restore_json_string(res.decode())
+                # 去除首尾的引号
+                res = res[1:-1]
+                print(res)
+                return res
         # 超时未返回数据，404
         abort(404)
 
