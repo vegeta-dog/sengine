@@ -2,6 +2,7 @@ import json
 import os
 import multiprocessing
 import queue
+from random import randint, random
 import sys
 import logging
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -24,7 +25,11 @@ server_host = ""  # kafka服务器地址
 def http_handler(message):
     print(message)
     # message['content'] = [message['raw']]
-    message['content'] = wordSplit.exact_wordcut(message['raw'])
+    if len(message['raw']) < randint(6, 10):
+        message['content'] = [message['raw']]
+    else:
+        message['content'] = wordSplit.exact_wordcut(message['raw'])
+
     # message['content'] += wordSplit.search_wordcut(message['raw'])
     # message['content'].append(message['raw'])
     print("content = ", message['content'])
