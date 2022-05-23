@@ -15,7 +15,8 @@
 
 logging::logger log_DataBase("DataBase");
 
-Database::DataBase::~DataBase() {
+Database::DataBase::~DataBase()
+{
 
     log_DataBase.debug(__LINE__, "Database object destructed.");
 
@@ -24,7 +25,8 @@ Database::DataBase::~DataBase() {
     this->redis_conn_pool->~redis_pool();
 }
 
-Database::DataBase::DataBase() {
+Database::DataBase::DataBase()
+{
     log_DataBase.info(__LINE__, "Initializing DataBase Object...");
 
     std::string str_data;

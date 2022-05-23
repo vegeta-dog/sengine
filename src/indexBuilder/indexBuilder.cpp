@@ -31,15 +31,19 @@ static ThreadSafeQueue::queue<std::string> recv_from_eva_queue;
 
 /**
  * @brief 删除字符串前后的引号，使得数据合法
- * 
+ *
  * @param item  原始字符串
- * @return std::string 
+ * @return std::string
  */
 static std::string remove_pre_suf_quote(const std::string &item)
 {
     if (item.length() <= 2)
         throw "can't normalize a empty string or item.length <= 2";
-    return item.substr(1, (int)item.length() - 2);
+
+    if (item[0] == '\"' && item[item.length() - 1] == '\"')
+        return item.substr(1, (int)item.length() - 2);
+    else
+        return item;
 }
 
 /**
@@ -223,7 +227,7 @@ void indexBuilder::preprocess(std::map<std::string, indexBuilder::InvertedIndex:
             //  std::cout << "item as string" << std::endl;
             // std::cout << item.as_string() << std::endl;
 
-            // item字符串有双引号，这里去掉 
+            // item字符串有双引号，这里去掉
             std::string str = remove_pre_suf_quote(boost::lexical_cast<std::string>(item));
             // std::cout << "item_str = " << str << " len=" << str.length() << std::endl;
 
