@@ -8,8 +8,8 @@ import jieba
 from jieba.analyse import textrank
 from scrapy.selector import Selector
 from se_crawler import items
-
-que = queue.Queue(maxsize=100)  # csdn 上面的 url, 限制长度为100
+import random
+que = queue.Queue(maxsize=10)  # csdn 上面的 url, 限制长度为10
 allowed_domain = 'blog.csdn.net'  # 域名限制
 
 
@@ -74,18 +74,15 @@ class CsdnSpider(scrapy.Spider):
         yield item
 
         # 等待 url
-        while True:
-            if que.qsize() > 0:
+        time.sleep(random.randint(10, 20) * 0.1)
 
-                print("url_que.size = ", que.qsize())
+        # print("url_que.size = ", que.qsize())
 
-                url = que.get(block=True)
-                # url = "https://blog.csdn.net/WhereIsHeroFrom/article/details/123836614"
-                dont_filter = True if random.randint(0, 3) > 0 else False
-                yield Request(url, callback=self.parse, dont_filter=dont_filter)
-            else:
-                print("crawler doesn't find url from the que")
-            time.sleep(3)
+        url = que.get(block=True)
+        # url = "https://blog.csdn.net/WhereIsHeroFrom/article/details/123836614"
+        dont_filter = True
+        yield Request(url, callback=self.parse, dont_filter=True)
+
 
 
 
