@@ -10,5 +10,6 @@ namespace libUTF
      * @param len 结束位置
      * @return std::string 结果串 
      */
-    std::string substr_utf(const std::string & data, int begin, int len);
+    std::string substr_utf(const std::string & data, int begin, int end);
+    std::string substr_utf_bylen(const std::string&, int, int);
 }

@@ -1,5 +1,5 @@
 import jieba
-import regex
+import regex as re
 import string
 from jieba.analyse import textrank
 
@@ -8,7 +8,17 @@ def jieba_init():
     jieba.initialize()
 
 
+def ignore_not_utf8_and_emo(word):
+    word = word.encode("utf-8", "ignore").decode("utf-8", "ignore")
+    try:
+        co = re.compile(u'['u'\U0001F300-\U0001F64F' u'\U0001F680-\U0001F6FF'u'\u2600-\u2B55]+')
+    except re.error:
+        co = re.compile(u'('u'\ud83c[\udf00-\udfff]|'u'\ud83d[\udc00-\ude4f\ude80-\udeff]|'u'[\u2600-\u2B55])+')
+    return co.sub(" ", word)
+
+
 def normalize(word):  # 规格化
+    word = ignore_not_utf8_and_emo(word)
     all_punc = '，。、【】“”：；（）《》‘’{}？！⑦()、%^>℃：.”“^-——=&#@￥' + string.punctuation
     return "".join([c if c not in all_punc else ' ' for c in word]).strip()
 
@@ -46,6 +56,7 @@ def search_wordcut(sentence_list):
     return word_list
 
 
+# print(normalize("你好不好哈🌲🌲喵喵🐶🐶西哦小鱼玉✖"))
 
 
 

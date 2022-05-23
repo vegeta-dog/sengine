@@ -295,8 +295,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
     freeReplyObject(reply);
     return false;
   }
-  reply = (redisReply *)redisCommand(this->redis_conn,
-                                     ("EXPIRE " + key + " 86400").c_str());
+  reply = (redisReply *)redisCommand(this->redis_conn, ("EXPIRE " + key + " 86400").c_str());
   freeReplyObject(reply);
 
   return true;
@@ -308,8 +307,7 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url)
  * @param url
  * @return 主键ID
  */
-int Evaluator::evaluator::store_weblink2db(const std::string &url,
-                                           unsigned int crawl)
+int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int crawl)
 {
   int ret = 0; // 返回的对应页面的idWebPage
   log->info(__LINE__, "store_weblink2db");
@@ -348,9 +346,6 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
   }
   else // url 在数据库中已存在
   {
-
-    // todo: 将已爬取的网页的Crawl设置为1
-
     // 先在redis中查询idWebPage
     log->info(__LINE__, "url在数据库中已经存在 update");
     std::string key = "WebPage:" + url;
@@ -544,19 +539,20 @@ void Evaluator::evaluator::run()
       if (title.length() >= 48)
         title = libUTF::substr_utf(title, 0, 48);
       
-      if (document.length() >= 1100)
-        document = libUTF::substr_utf(document, 0, 1100);
+      std::cerr << "doc = " << document << std::endl;
+      
+      if (document.length() >= 110)
+        document = libUTF::substr_utf(document, 0, 110);
 
       sql = "UPDATE WebPage SET title='" + title + "', document='" + document + "', Crawl=1 WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
       if (mysql_query(this->mysql_conn, sql.c_str()))
       {
-        this->log->error(__LINE__, "mysql query failed.Message:" +
-                                       boost::lexical_cast<std::string>(
-                                           mysql_error(this->mysql_conn)));
-        std::cerr << "sql=" << sql << std::endl;
+        this->log->error(__LINE__, "mysql query failed.Message: " + boost::lexical_cast<std::string>(mysql_error(this->mysql_conn)));
+        
+        std::cerr << "document_left : " << libUTF::substr_utf(document, 0, 110) << std::endl;
         mysql_rollback(this->mysql_conn);
         mysql_autocommit(this->mysql_conn, ON);
-        std::cout << "title=" << title << std::endl;
+        std::cout << "title = " << title << std::endl;
         throw "mysql query failed.";
       }
 
@@ -581,8 +577,7 @@ void Evaluator::evaluator::run()
  * @return true 成功创建
  * @return false 创建失败
  */
-bool Evaluator::evaluator::create_LinkRecord(unsigned int from,
-                                             unsigned int to)
+bool Evaluator::evaluator::create_LinkRecord(unsigned int from, unsigned int to)
 {
   // 首先检查指向关系是否存在
   char sql[2048];

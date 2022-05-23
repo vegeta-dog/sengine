@@ -27,7 +27,7 @@ class SeCrawlerPipeline:
         message['url'] = item['url']
         message["url_list"] = item["url_list"]
 
-        print(message['url_list'])
+        # print(message['url_list'])
 
         message['title_list'] = item['title_list']
         message["content_list"] = item["content_list"]

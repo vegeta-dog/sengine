@@ -220,7 +220,7 @@ void Searcher::searcher::run()
             std::set<unsigned int> result_page_id_set;
             // ========= 暴力搜索，查询是否存在按顺序的关键词关系 =====
 
-            const int match_delta = 50; // 匹配间隔为50 ???
+            const int match_delta = 33; // 匹配间隔为50 ???
 
             // 从页面的交集里面枚举页面id
             for (const auto &pid : working_set[set_flag])
@@ -301,16 +301,20 @@ bool Searcher::searcher::dfs_check_relationship(
             else
             {
                 // 将当前的指针移动到下一个page
-                while ((it != its_end[key_num])&& (*it)->idWebPage == idWebPage )
+                while ((it != its_end[key_num]) && (*it)->idWebPage == idWebPage)
                     ++it;
 
                 its[key_num] = it;
                 return false;
             }
         }
-        else
+        else if ((long long)(*it)->offset < base_offset)
         {
             ++it;
+        }
+        else
+        {
+            break;
         }
     }
 
@@ -480,14 +484,12 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
 
     // 输出json到redis
     std::stringstream redis_cmd;
-    redis_cmd << "SET search:" << (req_id) << " \""<<Database::translate_quote_for_redis(bj::serialize(ret2api)) <<"\"";
-
-    
+    redis_cmd << "SET search:" << (req_id) << " \"" << Database::translate_quote_for_redis(bj::serialize(ret2api)) << "\"";
 
     redisReply *reply = (redisReply *)redisCommand(redis_conn, redis_cmd.str().c_str());
     if (reply == NULL)
     {
-        std::cerr <<"redis_command=  "<<redis_cmd.str().c_str()<<std::endl;
+        std::cerr << "redis_command=  " << redis_cmd.str().c_str() << std::endl;
         log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(reply->str));
     }
     freeReplyObject(reply);

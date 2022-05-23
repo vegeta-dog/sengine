@@ -12,8 +12,9 @@ from utils.kafka_py import client
 from se_crawler_dir.crawlerServer import CrawlerServer
 from utils.configParser import configParser
 
-to_index_que = queue.Queue()
-to_eva_que = queue.Queue()
+
+to_index_que = queue.Queue(maxsize=client.QueMaxSize)
+to_eva_que = queue.Queue(maxsize=client.QueMaxSize)
 
 server_host = ""  # kafka服务器地址
 

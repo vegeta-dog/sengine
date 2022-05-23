@@ -17,7 +17,8 @@ Group_ID = "GPID"    # 不同消费者设置了不同的分组名,不懂为什�
 Group_ID_2 = "GPID2"
 Group_ID_3 = "GPID3"
 
-# :todo 修改队列，限制大小
+# 修改队列，限制大小, 防止队列一次性从kafka读入大量数据
+QueMaxSize = 100
 
 class Producer(threading.Thread):
     def run(self):
@@ -48,8 +49,6 @@ class Consumer(threading.Thread):
     def run(self):
         print("consumer run begin")
         for message in self.consumer:
-            if type(json.loads(message.value.decode())) is not type(dict()):
-                print('consumer: not a dict')
             print("consumer's topic", self.group_id, "| message:", json.loads(message.value.decode()))
             self.handler(json.loads(message.value.decode()))
         print("cinsumer run over")
