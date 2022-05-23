@@ -12,6 +12,19 @@ que = queue.Queue()  # csdn 上面的 url
 allowed_domain = 'blog.csdn.net'  # 域名限制
 
 
+def remove_none_utf8_characters(item_list):
+    """
+    删除list中每一项的的非utf8字符
+    :param item_list:输入的列表
+    :return:
+    """
+
+    for i in range(0, len(item_list)):
+        item_list[i] = item_list[i].encode('utf-8', 'ignore').decode("utf-8")
+
+    return item_list
+
+
 class CsdnSpider(scrapy.Spider):
     name = "csdn"
     allowed_domains = ['blog.csdn.net']
@@ -52,14 +65,19 @@ class CsdnSpider(scrapy.Spider):
         item = items.SeCrawlerItem()
         item['url'] = response.url
         item["url_list"] = href_list
-        item['title_list'] = h_list + title
-        item["content_list"] = main_content
+        item['title_list'] = remove_none_utf8_characters(h_list + title)
+        item["content_list"] = remove_none_utf8_characters(main_content)
+        # print(item)
+
         item['datetime'] = str(datetime.datetime.timestamp(datetime.datetime.now()))
         yield item
 
         # 等待 url
         while True:
             if que.qsize() > 0:
+
+                print("url_que.size = ", que.qsize())
+
                 url = que.get(block=True)
                 # url = "https://blog.csdn.net/WhereIsHeroFrom/article/details/123836614"
                 yield Request(url, callback=self.parse)

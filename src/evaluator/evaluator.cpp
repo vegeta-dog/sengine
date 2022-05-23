@@ -18,6 +18,8 @@
 #include "../utils/kafka-cpp/kafka_client.h"
 #include "../utils/queue/queue.h"
 
+#include <utf/utf.h>
+
 namespace bj = boost::json;
 
 static logging::logger log_evaluator("Evaluator");
@@ -159,7 +161,7 @@ void Evaluator::do_start(MYSQL *mysql_conn, int mysql_conn_id,
 
 void Evaluator::message_handler(kafka::clients::consumer::ConsumerRecord rec)
 {
-  msg_queue.push(rec.value().toString());
+  msg_queue.push(rec.value().se_toString());
 }
 
 Evaluator::evaluator::evaluator(MYSQL *mysql_conn, int mysql_conn_id,
@@ -532,17 +534,20 @@ void Evaluator::evaluator::run()
 
       for (auto &x : msg_obj.at("content").as_array())
       {
-        std::cout << "xxxxx=" << x.as_string() << std::endl;
-        log->warn(__LINE__, "x=" + boost::lexical_cast<std::string>(x.as_string()));
+        // std::cout << "xxxxx=" << x.as_string() << std::endl;
+        // log->warn(__LINE__, "x=" + boost::lexical_cast<std::string>(x.as_string()));
         document += remove_pre_suf_quote(boost::lexical_cast<std::string>(x.as_string()));
       }
 
       // 将文章的title和content存入mysql
       mysql_autocommit(this->mysql_conn, OFF);
-      if (title.length() >= 49)
-        title = title.substr(0, 49);
+      if (title.length() >= 48)
+        title = libUTF::substr_utf(title, 0, 48);
+      
+      if (document.length() >= 1100)
+        document = libUTF::substr_utf(document, 0, 1100);
 
-      sql = "UPDATE WebPage SET title='" + title + "', document='" + document + "' WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
+      sql = "UPDATE WebPage SET title='" + title + "', document='" + document + "', Crawl=1 WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
       if (mysql_query(this->mysql_conn, sql.c_str()))
       {
         this->log->error(__LINE__, "mysql query failed.Message:" +
