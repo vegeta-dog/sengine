@@ -18,7 +18,7 @@ Group_ID_2 = "GPID2"
 Group_ID_3 = "GPID3"
 
 # 修改队列，限制大小, 防止队列一次性从kafka读入大量数据
-QueMaxSize = 100
+QueMaxSize = 10
 
 class Producer(threading.Thread):
     def run(self):

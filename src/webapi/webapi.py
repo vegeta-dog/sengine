@@ -17,6 +17,7 @@ from utils.configParser.configParser import load_config
 from utils.exception import *
 import utils.logger as log
 
+import base64
 
 webapi_app = Flask("sEngine_webapi")
 
@@ -30,18 +31,11 @@ def encodeMD5(s):
 
 def restore_json_string(s):
     """
-    还原在searcher中，对引号进行转义的结果字符串
+    还原在searcher中， 被base64编码的结果
     :param s:从redis获取到的的字符串
     :return:
     """
-    ret = ""
-    for x in range(0, len(s)-1):
-        if s[x] == '\\' and s[x+1] == '"':
-            continue
-        ret += s[x]
-    ret += s[-1]
-    return ret
-
+    return base64.b64decode(s)
 
 
 @webapi_app.route('/', methods=['POST', 'GET'])
@@ -73,10 +67,8 @@ def webapi():
 
         res = redis_client.get("search:"+hash_mark)
         if res:
-            res = restore_json_string(res.decode())
-            # 去除首尾的引号
             print(res)
-            res = res[1:-1]
+            res = restore_json_string(res.decode())
             print(res)
             return res
 
@@ -95,9 +87,8 @@ def webapi():
             time.sleep(0.1)
             res = redis_client.get("search:"+hash_mark)
             if res:
+                print(res)
                 res = restore_json_string(res.decode())
-                # 去除首尾的引号
-                res = res[1:-1]
                 print(res)
                 return res
         # 超时未返回数据，404
