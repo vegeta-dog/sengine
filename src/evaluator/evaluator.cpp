@@ -22,20 +22,38 @@ namespace bj = boost::json;
 
 static logging::logger log_evaluator("Evaluator");
 static ThreadSafeQueue::queue<std::string>
-    msg_queue;  // 从爬虫模块收到的信息的队列, msg from word_split!
+    msg_queue; // 从爬虫模块收到的信息的队列, msg from word_split!
 
 static ThreadSafeQueue::queue<std::string>
-    send2indexBuilder_queue;  // 发送消息到索引构建器的队列
+    send2indexBuilder_queue; // 发送消息到索引构建器的队列
 static ThreadSafeQueue::queue<std::string>
-    send2Crawler_queue;  // 发送消息到爬虫的队列
+    send2Crawler_queue; // 发送消息到爬虫的队列
 
 static std::list<boost::thread *> threads;
 static std::list<Evaluator::evaluator *> eva_objs;
 
 /**
+ * @brief 删除字符串前后的引号，使得数据合法
+ *
+ * @param item  原始字符串
+ * @return std::string
+ */
+static std::string remove_pre_suf_quote(const std::string &item)
+{
+  if (item.length() <= 2)
+    throw "can't normalize a empty string or item.length <= 2";
+
+  if (item[0] == '\"' && item[item.length() - 1] == '\"')
+    return item.substr(1, (int)item.length() - 2);
+  else
+    return item;
+}
+
+/**
  * 启动evaluator模块
  */
-void Evaluator::run() {
+void Evaluator::run()
+{
   log_evaluator.info(__LINE__, "Evaluator starting...");
   configParser::parse("config.ini");
   Database::DataBase db;
@@ -50,7 +68,8 @@ void Evaluator::run() {
   boost::thread *t;
   Evaluator::evaluator *eva_ptr;
 
-  for (unsigned int i = 0; i < evaluator_num; ++i) {
+  for (unsigned int i = 0; i < evaluator_num; ++i)
+  {
     int mysql_id, redis_id;
     MYSQL *mysql_conn = db.mysql_conn_pool->get_conn(mysql_id);
     redisContext *redis_conn = db.redis_conn_pool->get_conn(redis_id);
@@ -77,7 +96,8 @@ void Evaluator::run() {
                         &Evaluator::send_msg2Crawler_handler);
   threads.emplace_back(t);
 
-  for (auto x = threads.begin(); x != threads.end(); ++x) (*x)->join();
+  for (auto x = threads.begin(); x != threads.end(); ++x)
+    (*x)->join();
 }
 
 /**
@@ -85,11 +105,16 @@ void Evaluator::run() {
  *
  * @return std::string
  */
-std::string Evaluator::send_msg2indexBuilder_handler() {
-  while (true) {
-    try {
+std::string Evaluator::send_msg2indexBuilder_handler()
+{
+  while (true)
+  {
+    try
+    {
       return send2indexBuilder_queue.getFront();
-    } catch (int e) {
+    }
+    catch (int e)
+    {
       if (e == -1)
         usleep(100);
       else
@@ -99,11 +124,16 @@ std::string Evaluator::send_msg2indexBuilder_handler() {
   }
 }
 
-std::string Evaluator::send_msg2Crawler_handler() {
-  while (true) {
-    try {
+std::string Evaluator::send_msg2Crawler_handler()
+{
+  while (true)
+  {
+    try
+    {
       return send2Crawler_queue.getFront();
-    } catch (int e) {
+    }
+    catch (int e)
+    {
       if (e == -1)
         usleep(100);
       else
@@ -119,20 +149,23 @@ std::string Evaluator::send_msg2Crawler_handler() {
  */
 void Evaluator::do_start(MYSQL *mysql_conn, int mysql_conn_id,
                          redisContext *redis_conn, int redis_conn_id,
-                         Database::DataBase *db) {
+                         Database::DataBase *db)
+{
   Evaluator::evaluator eva(mysql_conn, mysql_conn_id, redis_conn, redis_conn_id,
                            db);
   eva_objs.emplace_back(&eva);
   eva.run();
 }
 
-void Evaluator::message_handler(kafka::clients::consumer::ConsumerRecord rec) {
+void Evaluator::message_handler(kafka::clients::consumer::ConsumerRecord rec)
+{
   msg_queue.push(rec.value().toString());
 }
 
 Evaluator::evaluator::evaluator(MYSQL *mysql_conn, int mysql_conn_id,
                                 redisContext *redis_conn, int redis_conn_id,
-                                Database::DataBase *db) {
+                                Database::DataBase *db)
+{
   this->id = get_evaluator_id();
   this->log = new logging::logger("Evaluator " +
                                   boost::lexical_cast<std::string>(this->id));
@@ -146,7 +179,8 @@ Evaluator::evaluator::evaluator(MYSQL *mysql_conn, int mysql_conn_id,
   this->db = db;
 }
 
-Evaluator::evaluator::~evaluator() {
+Evaluator::evaluator::~evaluator()
+{
   free(this->log);
 
   this->db->mysql_conn_pool->free_conn(mysql_conn_id);
@@ -160,14 +194,17 @@ Evaluator::evaluator::~evaluator() {
  * @return true
  * @return false
  */
-bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
+bool Evaluator::evaluator::check_url_in_db(const std::string &url)
+{
   std::string key;
   // 先检查是否在redis内
   key = "WebPage:" + url;
   redisReply *reply =
       (redisReply *)redisCommand(this->redis_conn, ("GET " + key).c_str());
-  if (reply != NULL && reply->type == REDIS_REPLY_STATUS) {
-    if (reply->str == "1") {
+  if (reply != NULL && reply->type == REDIS_REPLY_STATUS)
+  {
+    if (reply->str == "1")
+    {
       freeReplyObject(reply);
       return true;
     }
@@ -183,7 +220,8 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
 
   // std::cout << mysql_query(this->mysql_conn, sql.c_str()) << std::endl;
 
-  if (mysql_query(this->mysql_conn, sql.c_str())) {
+  if (mysql_query(this->mysql_conn, sql.c_str()))
+  {
     log->error(__LINE__, "mysql query failed. Message:" +
                              boost::lexical_cast<std::string>(
                                  mysql_error(this->mysql_conn)));
@@ -200,9 +238,11 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
   bool _crawl;
   std::string _id;
 
-  if (mysql_affected_rows(this->mysql_conn) == 0) return false;
+  if (mysql_affected_rows(this->mysql_conn) == 0)
+    return false;
   // assert(mysql_affected_rows(this->mysql_conn) == 1);
-  while (column = mysql_fetch_row(res)) {
+  while (column = mysql_fetch_row(res))
+  {
     _id = column[0];
     _crawl = boost::lexical_cast<int>(column[1]);
     _updatedTime = boost::lexical_cast<std::string>(column[2]);
@@ -213,13 +253,15 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
   mysql_free_result(res);
 
   // 数据库中不存在
-  if (_updatedTime == "") return false;
+  if (_updatedTime == "")
+    return false;
 
   // 将url到id的映射存入redis
   key = "WebPage:" + url;
   reply = (redisReply *)redisCommand(this->redis_conn,
                                      ("SET " + key + " " + _id).c_str());
-  if (reply == NULL) {
+  if (reply == NULL)
+  {
     log->error(__LINE__, "Redis reply is NULL!");
     freeReplyObject(reply);
     return false;
@@ -231,7 +273,8 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
   key = " WebPage:" + url + ":UpdatedTime ";
   reply = (redisReply *)redisCommand(this->redis_conn,
                                      ("SET" + key + _updatedTime).c_str());
-  if (reply == NULL) {
+  if (reply == NULL)
+  {
     log->error(__LINE__, "Redis reply is NULL!");
     freeReplyObject(reply);
     return false;
@@ -244,7 +287,8 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
   reply = (redisReply *)redisCommand(
       this->redis_conn,
       ("SET" + key + boost::lexical_cast<std::string>(int(_crawl))).c_str());
-  if (reply == NULL) {
+  if (reply == NULL)
+  {
     log->error(__LINE__, "Redis reply is NULL!");
     freeReplyObject(reply);
     return false;
@@ -263,10 +307,12 @@ bool Evaluator::evaluator::check_url_in_db(const std::string &url) {
  * @return 主键ID
  */
 int Evaluator::evaluator::store_weblink2db(const std::string &url,
-                                           unsigned int crawl) {
-  int ret = 0;
+                                           unsigned int crawl)
+{
+  int ret = 0; // 返回的对应页面的idWebPage
   log->info(__LINE__, "store_weblink2db");
-  if (!Evaluator::evaluator::check_url_in_db(url)) {
+  if (!Evaluator::evaluator::check_url_in_db(url))
+  {
     // url在数据库中不存在
     log->info(__LINE__, "url在数据库中不存在 insert");
     char sql[2048];
@@ -275,25 +321,30 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
         "INSERT INTO WebPage(idWebPage, url, Crawl)  VALUES(NULL, '%s', %d)",
         url.c_str(), crawl);
     mysql_autocommit(this->mysql_conn, OFF);
-    try {
+    try
+    {
       mysql_query(this->mysql_conn, sql);
-      if (mysql_commit(this->mysql_conn)) {
+      if (mysql_commit(this->mysql_conn))
+      {
         log->error(__LINE__, "mysql query failed. Message:" +
                                  boost::lexical_cast<std::string>(
                                      mysql_error(this->mysql_conn)));
         ret = -1;
         mysql_rollback(this->mysql_conn);
-      } else
+      }
+      else
         ret = mysql_insert_id(this->mysql_conn);
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       mysql_rollback(this->mysql_conn);
       log->error(__LINE__, "mysql query failed. Message:" +
                                boost::lexical_cast<std::string>(e.what()));
     }
 
     mysql_autocommit(this->mysql_conn, ON);
-  } 
-  else  // url 在数据库中已存在
+  }
+  else // url 在数据库中已存在
   {
 
     // todo: 将已爬取的网页的Crawl设置为1
@@ -304,17 +355,25 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
 
     redisReply *reply =
         (redisReply *)redisCommand(this->redis_conn, ("GET " + key).c_str());
-    if (reply == NULL) {
+    if (reply == NULL)
+    {
       log->error(__LINE__, "Redis reply is NULL!");
       freeReplyObject(reply);
-    } else
-      return boost::lexical_cast<int>(reply->str);  // 在redis中找到数据
+    }
+    else
+      return boost::lexical_cast<int>(reply->str); // 在redis中找到数据
 
     std::string sql;
     sql = "SELECT idWebPage FROM WebPage WHERE url='" + url + "';";
-    if (mysql_query(this->mysql_conn, sql.c_str())) {
-      log->error(__LINE__, "mysql query failed.");
-      return false;
+    if (mysql_query(this->mysql_conn, sql.c_str()))
+    {
+      log->error(__LINE__, "mysql query failed.Message:" +
+                               boost::lexical_cast<std::string>(
+                                   mysql_error(this->mysql_conn)));
+
+      throw "mysql query failed.Message:" +
+          boost::lexical_cast<std::string>(
+              mysql_error(this->mysql_conn));
     }
 
     MYSQL_RES *res;
@@ -325,16 +384,33 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
     MYSQL_ROW column;
 
     assert(mysql_affected_rows(this->mysql_conn) == 1);
-    while (column = mysql_fetch_row(res)) {
+    while (column = mysql_fetch_row(res))
+    {
       ret = boost::lexical_cast<int>(column[0]);
     }
+    mysql_autocommit(this->mysql_conn, OFF);
+    // 将数据库中的Crawl属性设置为1
+    sql = "UPDATE WebPage SET Crawl=1 WHERE idWebPage=" + boost::lexical_cast<std::string>(ret) + ";";
+    if (mysql_query(this->mysql_conn, sql.c_str()))
+    {
+      log->error(__LINE__, "mysql query failed.Message:" +
+                               boost::lexical_cast<std::string>(
+                                   mysql_error(this->mysql_conn)));
+      mysql_rollback(this->mysql_conn);
+      mysql_autocommit(this->mysql_conn, ON);
+      throw "mysql query failed.Message:" +
+          boost::lexical_cast<std::string>(
+              mysql_error(this->mysql_conn));
+    }
+    mysql_autocommit(this->mysql_conn, ON);
 
     // 将url到id的映射存入redis
     key = "WebPage:" + url;
     reply = (redisReply *)redisCommand(
         this->redis_conn,
         ("SET " + key + " " + boost::lexical_cast<std::string>(ret)).c_str());
-    if (reply == NULL) {
+    if (reply == NULL)
+    {
       log->error(__LINE__, "Redis reply is NULL!");
       freeReplyObject(reply);
     }
@@ -348,17 +424,23 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url,
  * @brief 评估器评估函数
  *  初次迭代中，暂不对内容进行评估，只是将网页数据往索引构建器传递
  */
-void Evaluator::evaluator::run() {
+void Evaluator::evaluator::run()
+{
   log->info(__LINE__, "Evaluator started.");
-  while (true) {
-    try {
+  while (true)
+  {
+    try
+    {
       // 解析json
       std::string msg;
-      try {
+      try
+      {
         msg = msg_queue.getFront();
-      } catch (int e) {
+      }
+      catch (int e)
+      {
         if (e == -1)
-          usleep(100);  // can't get msg !!!!!
+          usleep(100); // can't get msg !!!!!
         else
           std::cerr << "At line " << __LINE__ << ": unexpected exception"
                     << std::endl;
@@ -380,7 +462,8 @@ void Evaluator::evaluator::run() {
 
       auto urls = url_list.as_array();
       int to_page_id;
-      for (const auto &u : urls) {
+      for (const auto &u : urls)
+      {
         std::cout << "very before" << std::endl;
         std::string x = bj::value_to<std::string>(u);
         // 将网页上带有的链接存入数据库
@@ -389,8 +472,9 @@ void Evaluator::evaluator::run() {
 
         to_page_id = store_weblink2db(x, 0);
 
-        if (!to_page_id) {
-            log->info(__LINE__, "str to_page_id = " + x);
+        if (!to_page_id)
+        {
+          log->info(__LINE__, "str to_page_id = " + x);
         }
 
         // 创建weblink
@@ -415,8 +499,11 @@ void Evaluator::evaluator::run() {
           ";";
       mysql_autocommit(this->mysql_conn, OFF);
 
-      if (mysql_query(this->mysql_conn, sql.c_str())) {
-        this->log->error(__LINE__, "mysql query failed.");
+      if (mysql_query(this->mysql_conn, sql.c_str()))
+      {
+        this->log->error(__LINE__, "mysql query failed.Message:" +
+                                       boost::lexical_cast<std::string>(
+                                           mysql_error(this->mysql_conn)));
         mysql_rollback(this->mysql_conn);
         mysql_autocommit(this->mysql_conn, ON);
         throw "mysql query failed.";
@@ -432,11 +519,50 @@ void Evaluator::evaluator::run() {
       to_index_builder["title"] = msg_obj.at("title");
       to_index_builder["content"] = msg_obj.at("content");
 
+      // 提取title和content的完整字符串
+      std::string title = "";
+      std::string document = "";
+
+      for (auto &x : msg_obj.at("title").as_array())
+      {
+        std::cout << "titlex=" << x.as_string() << std::endl;
+        log->warn(__LINE__, "titlex=" + boost::lexical_cast<std::string>(x.as_string()));
+        title += remove_pre_suf_quote(boost::lexical_cast<std::string>(x.as_string()));
+      }
+
+      for (auto &x : msg_obj.at("content").as_array())
+      {
+        std::cout << "xxxxx=" << x.as_string() << std::endl;
+        log->warn(__LINE__, "x=" + boost::lexical_cast<std::string>(x.as_string()));
+        document += remove_pre_suf_quote(boost::lexical_cast<std::string>(x.as_string()));
+      }
+
+      // 将文章的title和content存入mysql
+      mysql_autocommit(this->mysql_conn, OFF);
+      if (title.length() >= 49)
+        title = title.substr(0, 49);
+
+      sql = "UPDATE WebPage SET title='" + title + "', document='" + document + "' WHERE idWebPage=" + boost::lexical_cast<std::string>(from_page_id) + ";";
+      if (mysql_query(this->mysql_conn, sql.c_str()))
+      {
+        this->log->error(__LINE__, "mysql query failed.Message:" +
+                                       boost::lexical_cast<std::string>(
+                                           mysql_error(this->mysql_conn)));
+        std::cerr << "sql=" << sql << std::endl;
+        mysql_rollback(this->mysql_conn);
+        mysql_autocommit(this->mysql_conn, ON);
+        std::cout << "title=" << title << std::endl;
+        throw "mysql query failed.";
+      }
+
+      mysql_autocommit(this->mysql_conn, ON);
       // 将下一步要爬取的链接发回给爬虫模块
       // 不是给爬虫，这里应该是给索引构建器
       send2indexBuilder_queue.push(boost::json::serialize(to_index_builder));
       log->info(__LINE__, "push ok!");
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       log->error(__LINE__, boost::lexical_cast<std::string>(e.what()));
     }
   }
@@ -451,7 +577,8 @@ void Evaluator::evaluator::run() {
  * @return false 创建失败
  */
 bool Evaluator::evaluator::create_LinkRecord(unsigned int from,
-                                             unsigned int to) {
+                                             unsigned int to)
+{
   // 首先检查指向关系是否存在
   char sql[2048];
 
@@ -460,7 +587,8 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from,
           "LinkTable.To=%d;",
           from, to);
 
-  if (mysql_query(this->mysql_conn, sql)) {
+  if (mysql_query(this->mysql_conn, sql))
+  {
     log->error(__LINE__, "mysql query failed. Message:" +
                              boost::lexical_cast<std::string>(
                                  mysql_error(this->mysql_conn)));
@@ -475,11 +603,13 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from,
 
   // assert(mysql_affected_rows(this->mysql_conn) == 1);
   int count;
-  while (column = mysql_fetch_row(res)) {
+  while (column = mysql_fetch_row(res))
+  {
     count = boost::lexical_cast<int>(column[0]);
   }
 
-  if (count > 0) return true;
+  if (count > 0)
+    return true;
 
   // 不存在链接，创建链接
   mysql_autocommit(this->mysql_conn, OFF);
@@ -489,7 +619,8 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from,
 
   std::cout << "from = " << from << " , to = " << to << std::endl;
 
-  if (mysql_query(this->mysql_conn, sql)) {
+  if (mysql_query(this->mysql_conn, sql))
+  {
     log->error(__LINE__, "Failed to create LinkRecord. Message:" +
                              boost::lexical_cast<std::string>(
                                  mysql_error(this->mysql_conn)));
@@ -502,7 +633,8 @@ bool Evaluator::evaluator::create_LinkRecord(unsigned int from,
   return true;
 }
 
-unsigned int Evaluator::get_evaluator_id() {
+unsigned int Evaluator::get_evaluator_id()
+{
   unsigned int ret;
   mtx_evaluator_id.lock();
 
