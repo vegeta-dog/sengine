@@ -301,7 +301,7 @@ bool Searcher::searcher::dfs_check_relationship(
             else
             {
                 // 将当前的指针移动到下一个page
-                while ((*it)->idWebPage == idWebPage && (it != its_end[key_num]))
+                while ((it != its_end[key_num])&& (*it)->idWebPage == idWebPage )
                     ++it;
 
                 its[key_num] = it;
@@ -441,7 +441,7 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
 
         if (mysql_affected_rows(mysql_conn) != 1)
         {
-            log->error(__LINE__, "mysql affectedlines != 1.");
+            log->error(__LINE__, "mysql affectedlines != 1. num=" + boost::lexical_cast<std::string>(mysql_affected_rows(mysql_conn)));
             this->db->mysql_conn_pool->free_conn(mysql_conn_id);
             this->db->redis_conn_pool->free_conn(redis_conn_id);
             throw "mysql affectedlines != 1.";
