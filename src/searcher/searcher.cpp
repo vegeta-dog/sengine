@@ -488,14 +488,26 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
 
     redis_cmd << "SET search:" << (req_id) << " " << b64_result;
     std::cout << redis_cmd.str() << std::endl;
-    redisReply *reply = (redisReply *)redisCommand(redis_conn, redis_cmd.str().c_str());
-    if (reply == NULL)
+
+    int errcode = 0;
+    do
     {
-        std::cerr << "redis_command=  " << redis_cmd.str().c_str() << std::endl;
-        log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(redis_conn->errstr));
-    }
-    // std::cout<< "redis_result="<< rep  ly->str<<std::endl;
-    freeReplyObject(reply);
+        redisReply *reply = (redisReply *)redisCommand(redis_conn, redis_cmd.str().c_str());
+        if (reply == NULL)
+        {
+            std::cerr << "redis_command=  " << redis_cmd.str().c_str() << std::endl;
+            log->error(__LINE__, "redis error: msg: " + boost::lexical_cast<std::string>(redis_conn->errstr));
+        }
+
+        // std::cout<< "redis_result="<< rep  ly->str<<std::endl;
+        freeReplyObject(reply);
+        errcode = redis_conn->err;
+        if (errcode != 0)
+        {
+            this->db->redis_conn_pool->free_conn(redis_conn_id);
+            redis_conn = this->db->redis_conn_pool->get_conn(redis_conn_id);
+        }
+    } while (errcode != 0);
 
     this->db->mysql_conn_pool->free_conn(mysql_conn_id);
     this->db->redis_conn_pool->free_conn(redis_conn_id);
