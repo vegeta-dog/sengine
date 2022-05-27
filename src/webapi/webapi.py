@@ -3,11 +3,14 @@ import sys
 import os
 import flask
 import time
+
+import flask_cors
 import redis
 import kafka
 import datetime
 import hashlib
 from flask import Flask, request, Response, abort
+from flask_cors import cross_origin
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
@@ -39,6 +42,7 @@ def restore_json_string(s):
 
 
 @webapi_app.route('/', methods=['POST', 'GET'])
+@cross_origin(allow=['*'])
 def webapi():
 
     try:

@@ -25,10 +25,8 @@ server_host = ""  # kafka服务器地址
 def http_handler(message):
     print(message)
     # message['content'] = [message['raw']]
-    if len(message['raw']) < randint(6, 10):
-        message['content'] = [message['raw']]
-    else:
-        message['content'] = wordSplit.exact_wordcut(message['raw'])
+    
+    message['content'] = wordSplit.search_wordcut(message['raw'])
 
     # message['content'] += wordSplit.search_wordcut(message['raw'])
     # message['content'].append(message['raw'])
@@ -62,15 +60,15 @@ class WordSplitServer(multiprocessing.Process):
 
         print("start wordsplit_server url _send !!")
 
-        msg = {
-            'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919",
-            'title': ["title", 'title test'],
-            'content': ["ttestt"],
-            'url_list': ["https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"],
-            'timestamp': 0
-        }
-        # msg = {'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"}
-        to_eva_que.put(msg, block=True)
+        # msg = {
+        #     'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919",
+        #     'title': ["title", 'title test'],
+        #     'content': ["ttestt"],
+        #     'url_list': ["https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"],
+        #     'timestamp': 0
+        # }
+        # # msg = {'url': "https://blog.csdn.net/WhereIsHeroFrom/article/details/123701919"}
+        # to_eva_que.put(msg, block=True)
 
         # ??
         http_receiver.join()
