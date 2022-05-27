@@ -247,7 +247,7 @@ void Searcher::searcher::run()
 
             // 输出结果
             std::string query_str_id = key_to_string(msg_obj.at("id"));
-            this->output_result(query_str_id, result_page_id_set);
+            this->output_result(query_str_id, result_page_id_set, idWebPage_keycount_map);
         }
         catch (const std::exception &e)
         {
@@ -388,11 +388,17 @@ Searcher::searcher::read_inv_index(const std::string &key)
     }
 
     // 读取倒排列表
-
-    std::ifstream fin(path, std::ios::in);
-    boost::archive::binary_iarchive ia(fin);
-    ia >> inv_list;
-    fin.close();
+    try
+    {
+         std::ifstream fin(path, std::ios::in);
+        boost::archive::binary_iarchive ia(fin);
+        ia >> inv_list;
+        fin.close();
+    }
+    catch(const std::exception& e)
+    { 
+        std::cerr <<"While reading invIndex: key="<<key<< e.what() << '\n';
+    }
 
     std::cerr << "OK ! return from read_inv_index" << std::endl;
 
@@ -406,7 +412,7 @@ Searcher::searcher::read_inv_index(const std::string &key)
  * @param req_id 用户请求的id
  * @param res_pid_set 最终文章的结果集
  */
-void Searcher::searcher::output_result(const std::string &req_id, std::set<unsigned int> &res_pid_set)
+void Searcher::searcher::output_result(const std::string &req_id, std::set<unsigned int> &res_pid_set, std::map<unsigned int, unsigned int> &idWebPage_keycount_map)
 {
     int redis_conn_id;
     redisContext *redis_conn = this->db->redis_conn_pool->get_conn(redis_conn_id);
@@ -428,8 +434,19 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
     boost::json::array arr_ret2api;
     bj::object ret2api;
 
-    for (const auto &id : res_pid_set)
+    // 将内容按照出现频次降序排序
+    std::vector<std::pair<int, int> > pid_sort_vec;
+
+    for(const auto &x: res_pid_set)
     {
+        pid_sort_vec.emplace_back(std::make_pair(-(idWebPage_keycount_map[x]), x));
+    }
+
+    std::sort(pid_sort_vec.begin(), pid_sort_vec.end());
+
+    for (const auto &x : pid_sort_vec)
+    {
+        const auto & id = x.second;
         if (mysql_query(mysql_conn, (base_sql + boost::lexical_cast<std::string>(id) + ";").c_str()))
         {
             log->error(__LINE__, "mysql execute error! SQL: " + (base_sql + boost::lexical_cast<std::string>(id) + ";"));

@@ -51,7 +51,7 @@ namespace Searcher
          * @param req_id 用户请求的id
          * @param res_pid_set 最终文章的结果集
          */
-        void output_result(const std::string &req_id, std::set<unsigned int> &res_pid_set);
+        void output_result(const std::string &req_id, std::set<unsigned int> &res_pid_set, std::map<unsigned int, unsigned int> &idWebPage_keycount_map);
 
         Database::DataBase *db;
         logging::logger *log;
