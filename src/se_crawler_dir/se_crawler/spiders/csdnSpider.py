@@ -25,6 +25,7 @@ allowed_domain = 'blog.csdn.net'  # 域名限制
 #
 #     return item_list
 
+crawled_set = set()
 
 class CsdnSpider(scrapy.Spider):
     name = "csdn"
@@ -77,11 +78,14 @@ class CsdnSpider(scrapy.Spider):
         time.sleep(random.randint(10, 20) * 0.1)
 
         # print("url_que.size = ", que.qsize())
-
-        url = que.get(block=True)
-        # url = "https://blog.csdn.net/WhereIsHeroFrom/article/details/123836614"
-        dont_filter = True
-        yield Request(url, callback=self.parse, dont_filter=True)
+        while True:
+            url = que.get(block=True)
+            # url = "https://blog.csdn.net/WhereIsHeroFrom/article/details/123836614"
+            if url not in crawled_set:
+                crawled_set.add(url)
+                dont_filter = True
+                yield Request(url, callback=self.parse, dont_filter=True)
+                break
 
 
 
