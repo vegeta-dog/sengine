@@ -111,6 +111,9 @@ void indexBuilder::message_recv_from_Eva_handler(
 {
     // std::cout << rec.value().se_toString() << std::endl;
     // std::cout << boost::lexical_cast<std::string>(rec.value().se_toString()) << std::endl;
+    while (recv_from_eva_queue.size() > 2)
+        continue;
+
     recv_from_eva_queue.push(rec.value().se_toString());
 }
 
@@ -199,6 +202,10 @@ void indexBuilder::builder::run()
         {
             this->log->error(__LINE__, boost::lexical_cast<std::string>(e.what()));
         }
+        catch (const std::string &e)
+        {
+            this->log->error(__LINE__, boost::lexical_cast<std::string>(e));
+        }
         log->info(__LINE__, "end of run_function!");
     }
 }
@@ -272,11 +279,22 @@ void indexBuilder::worker(
     if (path != "-1")
     {
         indexBuilder::InvertedIndex::InvertedIndex_List existsed_list;
-
-        std::ifstream fin(path, std::ios::in);
-        boost::archive::binary_iarchive ia(fin);
-        ia >> existsed_list; // 从倒排文件中读取整个索引结构
-        fin.close();
+        try
+        {
+            /* code */
+            std::ifstream fin(path, std::ios::in);
+            boost::archive::binary_iarchive ia(fin);
+            ia >> existsed_list; // 从倒排文件中读取整个索引结构
+            fin.close();
+        }
+        catch (boost::archive::archive_exception & e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << '\n';
+        }
 
         // 先清空属于该网页的倒排索引
         for (auto it = existsed_list.list.begin(); it != existsed_list.list.end();)

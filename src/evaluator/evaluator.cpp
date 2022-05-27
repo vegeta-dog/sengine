@@ -161,6 +161,8 @@ void Evaluator::do_start(MYSQL *mysql_conn, int mysql_conn_id,
 
 void Evaluator::message_handler(kafka::clients::consumer::ConsumerRecord rec)
 {
+  while (msg_queue.size() > 2)
+    continue;
   msg_queue.push(rec.value().se_toString());
 }
 
@@ -336,21 +338,21 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int 
       }
       else
       {
-          // 获取前面插入的这条数据的idWebPage
-          sprintf(sql, "SELECT LAST_INSERT_ID();");
-          mysql_query(this->mysql_conn, sql);
-          MYSQL_RES *res;
+        // 获取前面插入的这条数据的idWebPage
+        sprintf(sql, "SELECT LAST_INSERT_ID();");
+        mysql_query(this->mysql_conn, sql);
+        MYSQL_RES *res;
 
-          res = mysql_store_result(this->mysql_conn);
-          assert(res != NULL);
+        res = mysql_store_result(this->mysql_conn);
+        assert(res != NULL);
 
-          MYSQL_ROW column;
+        MYSQL_ROW column;
 
-          assert(mysql_affected_rows(this->mysql_conn) == 1);
-          while (column = mysql_fetch_row(res))
-          {
-            ret = boost::lexical_cast<int>(column[0]);
-          }
+        assert(mysql_affected_rows(this->mysql_conn) == 1);
+        while (column = mysql_fetch_row(res))
+        {
+          ret = boost::lexical_cast<int>(column[0]);
+        }
       }
     }
     catch (const std::exception &e)
@@ -442,10 +444,12 @@ int Evaluator::evaluator::store_weblink2db(const std::string &url, unsigned int 
 void Evaluator::evaluator::run()
 {
   log->info(__LINE__, "Evaluator started.");
+
   while (true)
   {
     try
     {
+
       // 解析json
       std::string msg;
       try
@@ -464,16 +468,14 @@ void Evaluator::evaluator::run()
       std::cout << "very begin" << std::endl;
 
       bj::value jv = bj::parse(msg);
-      log->info(__LINE__, "tthh");
-      auto msg_obj = jv.as_object();
-      log->info(__LINE__, "tt");
-      std::string url = bj::value_to<std::string>(msg_obj.at("url"));
-      log->info(__LINE__, "gg");
-      bj::value url_list = msg_obj.at("url_list");
-      log->info(__LINE__, "1212121");
-      int from_page_id = store_weblink2db(url, 1);
 
-      std::cout << "fuck 1" << std::endl;
+      auto msg_obj = jv.as_object();
+
+      std::string url = bj::value_to<std::string>(msg_obj.at("url"));
+
+      bj::value url_list = msg_obj.at("url_list");
+
+      int from_page_id = store_weblink2db(url, 1);
 
       auto urls = url_list.as_array();
       int to_page_id;
@@ -501,8 +503,6 @@ void Evaluator::evaluator::run()
 
         send2Crawler_queue.push(boost::json::serialize(to_crawler));
       }
-
-
 
       // 填写count_total_link_to
       std::string sql =
@@ -573,6 +573,7 @@ void Evaluator::evaluator::run()
       }
 
       mysql_autocommit(this->mysql_conn, ON);
+
       // 将下一步要爬取的链接发回给爬虫模块
       // 不是给爬虫，这里应该是给索引构建器
       send2indexBuilder_queue.push(boost::json::serialize(to_index_builder));
@@ -581,6 +582,14 @@ void Evaluator::evaluator::run()
     catch (const std::exception &e)
     {
       log->error(__LINE__, boost::lexical_cast<std::string>(e.what()));
+    }
+    catch (const std::string &e)
+    {
+      log->error(__LINE__, boost::lexical_cast<std::string>(e));
+    }
+    catch(char const* e)
+    {
+      log->error(__LINE__, boost::lexical_cast<std::string>(e));
     }
   }
 }
