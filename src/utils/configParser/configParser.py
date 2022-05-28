@@ -2,7 +2,7 @@ import configparser
 import os, sys
 
 
-def load_config(path=os.path.join(os.path.dirname(__file__), "../../../build/config.ini")):
+def load_config(path=os.path.join(os.getcwd(), "../config.ini")):
     """
     :param path: 配置文件的路径
     :return:
@@ -14,7 +14,7 @@ def load_config(path=os.path.join(os.path.dirname(__file__), "../../../build/con
     print(path)
     print(parser)
 
-    # 只有 4 个属性, 如果需要添加, 清后续修改
+    # 只有 5 个属性, 如果需要添加, 清后续修改
     print(parser.sections())
     assert len(parser.sections()) == 5
 

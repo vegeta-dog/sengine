@@ -119,7 +119,7 @@ if __name__ == '__main__':
     # 将api producer加入线程池
     # proc_pool.apply_async(API_producer.run, args=())
 
-    webapi_app.run(port=56666)
+    webapi_app.run(port=56666, host='0.0.0.0')
 
     API_producer.join()
 

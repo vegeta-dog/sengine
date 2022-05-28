@@ -342,7 +342,8 @@ Searcher::searcher::read_inv_index(const std::string &key)
 
     std::string sql = "SELECT path FROM InvertedIndexTable WHERE InvertedIndexTable.key='" + key + "';";
 
-    std::cerr << "start sql query!" << std::endl;
+    std::cerr << "start sql query!"
+              << "SQL=  " + sql << std::endl;
 
     if (mysql_query(mysql_conn, sql.c_str()))
     {
@@ -363,6 +364,7 @@ Searcher::searcher::read_inv_index(const std::string &key)
     std::cerr << "mysql store result ok!" << std::endl;
 
     int rows = mysql_affected_rows(mysql_conn);
+
     if (rows > 1)
     {
         log->error(__LINE__, "mysql affectedlines != 1. affects:" + boost::lexical_cast<std::string>(mysql_affected_rows(mysql_conn)));
@@ -371,6 +373,8 @@ Searcher::searcher::read_inv_index(const std::string &key)
     }
     else if (rows == 0) // 没有索引
     {
+        log->error(__LINE__, "mysql affectedlines == 0. key=" + key);
+
         return inv_list;
     }
 
@@ -390,14 +394,14 @@ Searcher::searcher::read_inv_index(const std::string &key)
     // 读取倒排列表
     try
     {
-         std::ifstream fin(path, std::ios::in);
+        std::ifstream fin(path, std::ios::in);
         boost::archive::binary_iarchive ia(fin);
         ia >> inv_list;
         fin.close();
     }
-    catch(const std::exception& e)
-    { 
-        std::cerr <<"While reading invIndex: key="<<key<< e.what() << '\n';
+    catch (const std::exception &e)
+    {
+        std::cerr << "While reading invIndex: key=" << key << e.what() << '\n';
     }
 
     std::cerr << "OK ! return from read_inv_index" << std::endl;
@@ -435,9 +439,9 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
     bj::object ret2api;
 
     // 将内容按照出现频次降序排序
-    std::vector<std::pair<int, int> > pid_sort_vec;
+    std::vector<std::pair<int, int>> pid_sort_vec;
 
-    for(const auto &x: res_pid_set)
+    for (const auto &x : res_pid_set)
     {
         pid_sort_vec.emplace_back(std::make_pair(-(idWebPage_keycount_map[x]), x));
     }
@@ -446,7 +450,7 @@ void Searcher::searcher::output_result(const std::string &req_id, std::set<unsig
 
     for (const auto &x : pid_sort_vec)
     {
-        const auto & id = x.second;
+        const auto &id = x.second;
         if (mysql_query(mysql_conn, (base_sql + boost::lexical_cast<std::string>(id) + ";").c_str()))
         {
             log->error(__LINE__, "mysql execute error! SQL: " + (base_sql + boost::lexical_cast<std::string>(id) + ";"));

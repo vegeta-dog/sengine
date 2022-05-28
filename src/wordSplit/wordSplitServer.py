@@ -26,7 +26,10 @@ def http_handler(message):
     print(message)
     # message['content'] = [message['raw']]
     
-    message['content'] = wordSplit.search_wordcut(message['raw'])
+    if len(message['raw']) <= 5:
+        message['content'] = [message['raw']]
+    else:
+        message['content'] = wordSplit.exact_wordcut([message['raw']])
 
     # message['content'] += wordSplit.search_wordcut(message['raw'])
     # message['content'].append(message['raw'])

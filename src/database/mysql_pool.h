@@ -77,8 +77,11 @@ namespace Database::MysqlPool {
                     return E_mysql_pool_CONN_CANNOT_ESTABLISH;
                 }
 
-                // 设置以;g
+                
                 mysql_set_server_option(conn_pool[i], MYSQL_OPTION_MULTI_STATEMENTS_ON);
+
+                // 设置使用utf8
+                mysql_set_character_set(conn_pool[i],"utf8");
 
                 conn_flag[i] = false;
             }

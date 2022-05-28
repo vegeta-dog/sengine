@@ -40,14 +40,55 @@ void run_searcher()
     threads.emplace_back(t);
 }
 
+void do_run_wordsplit()
+{
+    system("cd wordSplit && python3 wordSplitServer.py");
+}
+void run_wordsplit()
+{
+    log_main.info(__LINE__, "Starting wordSplit module...");
+    boost::thread *t;
+    t = new boost::thread(&do_run_wordsplit);
+    threads.emplace_back(t);
+}
+
+void do_run_webapi()
+{
+    system("cd webapi && python3 webapi.py");
+}
+
+void run_webapi()
+{
+    log_main.info(__LINE__, "Starting webAPI module...");
+    boost::thread *t;
+    t = new boost::thread(&do_run_webapi);
+    threads.emplace_back(t);
+}
+
+void do_run_crawler()
+{
+    system("cd webapi && python3 webapi.py");
+}
+
+void run_crawler()
+{
+    log_main.info(__LINE__, "Starting crawler module...");
+    boost::thread *t;
+    t = new boost::thread(&do_run_crawler);
+    threads.emplace_back(t);
+}
+
 /**
  * 运行所有服务
  */
 void do_run_all()
 {
-    // run_evaluator();
-    // run_indexBuilder();
+    run_evaluator();
+    run_indexBuilder();
     run_searcher();
+    run_wordsplit();
+    run_webapi();
+    run_crawler();
 }
 
 void do_init_mysql()
@@ -69,13 +110,7 @@ int main(int argc, char const *argv[])
 
     // 为选项描述器增加选项
     // 参数依次为key value的类型以及描述
-    opts.add_options()
-        ("help", "帮助文档")
-        ("run-all", "运行全部服务")
-        ("run-evaluator", "运行内容评估器")
-        ("run-index-builder", "运行索引构建器")
-        ("run-searcher", "运行内容检索器")
-        ("init-mysql", "初始化MySQL数据库");
+    opts.add_options()("help", "帮助文档")("run-all", "运行全部服务")("run-evaluator", "运行内容评估器")("run-index-builder", "运行索引构建器")("run-searcher", "运行内容检索器")("run-wordsplit", "运行分词模块")("run-webapi", "运行webapi模块")("init-mysql", "初始化MySQL数据库");
 
     // 解析命令行参数
     bpo::store(bpo::parse_command_line(argc, argv, opts), vm);
@@ -84,24 +119,36 @@ int main(int argc, char const *argv[])
 
     // 没有指定参数则直接运行所有服务
     if (vm.empty())
-        do_run_all();
-    
+    {
+        std::cout << opts << std::endl;
+        exit(0);
+    }
+
     if (vm.count("help"))
     {
         std::cout << opts << std::endl;
     }
-    else if (vm.count("init-mysql"))  // init-mysql之前需要把sql文件从src里面复制到build里面去
+    else if (vm.count("init-mysql")) // init-mysql之前需要把sql文件从src里面复制到build里面去
         do_init_mysql();
 
     else if (vm.count("run-all"))
         do_run_all();
-    else if(vm.count("run-evaluator"))
-        run_evaluator();
-    else if(vm.count("run-index-builder"))
-        run_indexBuilder();
-    else if(vm.count("run-searcher"))
-        run_searcher();
-    
+    else
+    {
+        if (vm.count("run-evaluator"))
+            run_evaluator();
+        if (vm.count("run-index-builder"))
+            run_indexBuilder();
+        if (vm.count("run-searcher"))
+            run_searcher();
+
+        if (vm.count("run-wordsplit"))
+            run_wordsplit();
+
+        if (vm.count("run-webapi"))
+            run_webapi();
+    }
+
     for (auto itr = threads.begin(); itr != threads.end(); ++itr)
     {
         (*itr)->join();
